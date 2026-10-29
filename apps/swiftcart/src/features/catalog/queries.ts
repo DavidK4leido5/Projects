@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gt, ilike, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, isNotNull, notInArray, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { productImages, productVariants, products, stores } from "@/lib/db/schema";
@@ -33,6 +33,8 @@ export type CatalogFilters = {
   inStock?: boolean;
   page?: number;
   perPage?: number;
+  /** Ids to leave out, so a rail can ask for exactly the cards it renders. */
+  exclude?: string[];
 };
 
 /** Shared by every visitor, so it is cached and tagged rather than reloaded. */
@@ -72,6 +74,7 @@ export async function searchProducts(filters: CatalogFilters) {
   }
   if (filters.store) conditions.push(eq(stores.slug, filters.store));
   if (filters.inStock) conditions.push(gt(products.stock, 0));
+  if (filters.exclude?.length) conditions.push(notInArray(products.id, filters.exclude));
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 

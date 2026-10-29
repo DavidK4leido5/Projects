@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,14 +13,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
   Badge,
   Button,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   Table,
   TableBody,
   TableCell,
@@ -29,17 +23,31 @@ import {
   TableRow,
 } from "@repo/ui";
 import { formatMoney } from "@repo/shared";
+import { EntityDrawer } from "@/components/entity-drawer";
 import { ProductForm } from "@/components/product-form";
+import { RowMenu } from "@/components/row-menu";
+import { TableToolbar } from "@/components/table-toolbar";
 import { createProduct, deleteProduct, updateProduct } from "@/features/products/actions";
-import type { StoreItem } from "@/features/products/queries";
+import type { ProductListItem, ProductScope } from "@/features/products/queries";
 import type { ProductProperty, VariantOptions } from "@/lib/db/schema";
 
+const SORT_OPTIONS = [
+  { value: "new", label: "Newest" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+  { value: "stock-asc", label: "Stock: low to high" },
+  { value: "stock-desc", label: "Stock: high to low" },
+] as const;
+
+const SELECT_CLASS =
+  "h-9 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
 type Action =
-  | { type: "create"; item: StoreItem }
-  | { type: "update"; item: StoreItem }
+  | { type: "create"; item: ProductListItem }
+  | { type: "update"; item: ProductListItem }
   | { type: "delete"; id: string };
 
-function reducer(state: StoreItem[], action: Action): StoreItem[] {
+function reducer(state: ProductListItem[], action: Action): ProductListItem[] {
   if (action.type === "create") return [action.item, ...state];
   if (action.type === "update") {
     return state.map((item) => (item.id === action.item.id ? action.item : item));
@@ -58,7 +66,7 @@ function json<T>(formData: FormData, key: string, fallback: T): T {
 }
 
 /** The row the table shows while the server catches up. */
-function draftFrom(formData: FormData, base?: StoreItem): StoreItem {
+function draftFrom(formData: FormData, base?: ProductListItem): ProductListItem {
   const name = String(formData.get("name") ?? "").trim();
   const price = Number(String(formData.get("price") ?? "0").replace(/[^0-9.]/g, ""));
   const images = json<string[]>(formData, "images", []);
@@ -94,29 +102,106 @@ function draftFrom(formData: FormData, base?: StoreItem): StoreItem {
     images,
     properties,
     variants,
+    category: base?.category ?? null,
+    storeId: base?.storeId ?? "",
+    storeName: base?.storeName ?? "",
+    storeSlug: base?.storeSlug ?? "",
   };
 }
 
-export function ProductManager({ items }: { items: StoreItem[] }) {
+export type ProductManagerProps = {
+  items: ProductListItem[];
+  scope: ProductScope;
+  page: number;
+  pages: number;
+  total: number;
+  q: string;
+  category: string;
+  sort: string;
+  categories: string[];
+  /** Admin only: selected store id and the options for the store filter. */
+  store?: string;
+  stores?: { id: string; name: string }[];
+};
+
+/**
+ * One table for the seller dashboard and the admin products page. Scope only
+ * changes the visible columns and the filter set; the drawer and form are the
+ * same component in both places.
+ */
+export function ProductManager({
+  items,
+  scope,
+  page,
+  pages,
+  total,
+  q,
+  category,
+  sort,
+  categories,
+  store = "",
+  stores = [],
+}: ProductManagerProps) {
   const router = useRouter();
-  const [list, apply] = useOptimistic(items, reducer);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [rows, apply] = useOptimistic(items, reducer);
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"closed" | "create" | "edit">("closed");
-  const [editing, setEditing] = useState<StoreItem | null>(null);
+  const [editing, setEditing] = useState<ProductListItem | null>(null);
+  const [deleting, setDeleting] = useState<ProductListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const activeSort = SORT_OPTIONS.some((option) => option.value === sort) ? sort : "new";
+  const filtered = Boolean(q || category || activeSort !== "new" || (scope === "admin" && store));
 
   function openCreate() {
     setEditing(null);
     setMode("create");
   }
 
-  function openEdit(item: StoreItem) {
+  function openEdit(item: ProductListItem) {
     setEditing(item);
     setMode("edit");
   }
 
   function close() {
     setMode("closed");
+  }
+
+  function navigate(next: URLSearchParams, method: "push" | "replace") {
+    const query = next.toString();
+    const href = query ? pathname + "?" + query : pathname;
+    start(() => {
+      if (method === "replace") router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    });
+  }
+
+  function setSearch(value: string) {
+    const term = value.trim();
+    if (term === q) return;
+    const next = new URLSearchParams(searchParams.toString());
+    if (term) next.set("q", term);
+    else next.delete("q");
+    next.delete("page");
+    navigate(next, "replace");
+  }
+
+  function setFilter(key: "category" | "sort" | "store", value: string) {
+    const next = new URLSearchParams(searchParams.toString());
+    const cleared = value === "" || (key === "sort" && value === "new");
+    if (cleared) next.delete(key);
+    else next.set(key, value);
+    next.delete("page");
+    navigate(next, "push");
+  }
+
+  function goToPage(nextPage: number) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (nextPage <= 1) next.delete("page");
+    else next.set("page", String(nextPage));
+    navigate(next, "push");
   }
 
   function save(data: FormData) {
@@ -133,8 +218,9 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
     });
   }
 
-  function remove(item: StoreItem) {
+  function remove(item: ProductListItem) {
     setError(null);
+    setDeleting(null);
     start(async () => {
       apply({ type: "delete", id: item.id });
       const result = await deleteProduct(item.id);
@@ -144,14 +230,16 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Items</h2>
-        <Button onClick={openCreate} size="sm">
-          <Plus />
-          Add item
-        </Button>
-      </div>
+    <section className="flex flex-col gap-4" aria-busy={pending}>
+      {scope === "store" ? (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Items</h2>
+          <Button onClick={openCreate} size="sm">
+            <Plus />
+            Add item
+          </Button>
+        </div>
+      ) : null}
 
       {error ? (
         <p
@@ -162,111 +250,225 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
         </p>
       ) : null}
 
-      {list.length === 0 ? (
+      <TableToolbar
+        value={q}
+        onSearch={setSearch}
+        placeholder="Search products"
+        count={total}
+        countLabel={total === 1 ? "product" : "products"}
+        filters={
+          <>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              Category
+              <select
+                aria-label="Filter by category"
+                value={category}
+                onChange={(event) => setFilter("category", event.target.value)}
+                className={SELECT_CLASS}
+              >
+                <option value="">All categories</option>
+                {categories.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              Sort
+              <select
+                aria-label="Sort products"
+                value={activeSort}
+                onChange={(event) => setFilter("sort", event.target.value)}
+                className={SELECT_CLASS}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {scope === "admin" ? (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                Store
+                <select
+                  aria-label="Filter by store"
+                  value={store}
+                  onChange={(event) => setFilter("store", event.target.value)}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">All stores</option>
+                  {stores.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </>
+        }
+      />
+
+      {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border px-5 py-10">
           <p className="text-sm text-muted-foreground">
-            Nothing listed yet. Add your first item and it shows up on the storefront.
+            {filtered
+              ? "No products match these filters."
+              : scope === "store"
+                ? "Nothing listed yet. Add your first item and it shows up on the storefront."
+                : "No products yet."}
           </p>
-          <Button onClick={openCreate} variant="outline" size="sm">
-            <Plus />
-            Add item
-          </Button>
+          {!filtered && scope === "store" ? (
+            <Button onClick={openCreate} variant="outline" size="sm">
+              <Plus />
+              Add item
+            </Button>
+          ) : null}
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">Cover</TableHead>
                 <TableHead>Item</TableHead>
+                <TableHead>Category</TableHead>
+                {scope === "admin" ? <TableHead>Store</TableHead> : null}
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead>Previews</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-12 text-right">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {list.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {item.images[0] ? (
-                      <Image
-                        src={item.images[0]}
-                        alt=""
-                        width={40}
-                        height={40}
-                        className="h-10 w-10 rounded-md border border-border object-cover"
+              {rows.map((item) => {
+                const cover = item.images[0];
+                return (
+                  <TableRow
+                    key={item.id}
+                    tabIndex={0}
+                    className="cursor-pointer"
+                    onClick={() => openEdit(item)}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      openEdit(item);
+                    }}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {cover ? (
+                          <Image
+                            src={cover}
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 shrink-0 rounded-md bg-muted" />
+                        )}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-medium">{item.name}</span>
+                          {item.featured ? <Badge variant="secondary">Hero</Badge> : null}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {item.category ?? "Uncategorised"}
+                    </TableCell>
+                    {scope === "admin" ? (
+                      <TableCell className="text-muted-foreground">{item.storeName}</TableCell>
+                    ) : null}
+                    <TableCell className="tabular-nums">{formatMoney(item.priceCents)}</TableCell>
+                    <TableCell className="tabular-nums">{item.stock}</TableCell>
+                    <TableCell className="text-right">
+                      <RowMenu
+                        label={"Actions for " + item.name}
+                        items={[
+                          {
+                            label: "Edit",
+                            icon: <Pencil />,
+                            onSelect: () => openEdit(item),
+                          },
+                          {
+                            label: "View on storefront",
+                            icon: <ExternalLink />,
+                            onSelect: () =>
+                              window.open(
+                                "/products/" + item.slug,
+                                "_blank",
+                                "noopener,noreferrer",
+                              ),
+                          },
+                          {
+                            label: "Delete",
+                            icon: <Trash2 />,
+                            destructive: true,
+                            separatorBefore: true,
+                            onSelect: () => setDeleting(item),
+                          },
+                        ]}
                       />
-                    ) : (
-                      <div className="h-10 w-10 rounded-md bg-muted" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{item.name}</span>
-                      {item.featured ? <Badge variant="secondary">Hero</Badge> : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="tabular-nums">{formatMoney(item.priceCents)}</TableCell>
-                  <TableCell className="tabular-nums">{item.stock}</TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">
-                    {item.images.length}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(item)}>
-                        <Pencil />
-                        Edit
-                      </Button>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="ghost" className="text-destructive">
-                            <Trash2 />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {item.name} and its {item.images.length} preview
-                              {item.images.length === 1 ? "" : "s"} are removed from the storefront
-                              and from object storage. This cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Keep it</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => remove(item)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
       )}
 
-      <Sheet open={mode !== "closed"} onOpenChange={(open) => (open ? undefined : close())}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl">
-          <SheetHeader className="border-b border-border px-6 py-5">
-            <SheetTitle>{mode === "edit" ? "Edit item" : "Add item"}</SheetTitle>
-            <SheetDescription>
-              Previews and hero banners go to object storage and are mirrored to Cloudinary. The
-              first preview is the cover.
-            </SheetDescription>
-          </SheetHeader>
+      {pages > 1 ? (
+        <nav aria-label="Pagination" className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={page <= 1}
+            onClick={() => goToPage(page - 1)}
+          >
+            Previous
+          </Button>
+          <span className="text-sm tabular-nums text-muted-foreground">
+            Page {page} of {pages}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={page >= pages}
+            onClick={() => goToPage(page + 1)}
+          >
+            Next
+          </Button>
+        </nav>
+      ) : null}
+
+      <EntityDrawer
+        open={mode !== "closed"}
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+        title={mode === "edit" ? "Edit item" : "Add item"}
+        description="Previews and hero banners go to object storage and are mirrored to Cloudinary. The first preview is the cover."
+      >
+        <div className="-mx-6 -my-5 flex min-h-full flex-col">
+          {scope === "admin" && editing ? (
+            <div className="flex items-baseline gap-2 border-b border-border px-6 py-3 text-sm">
+              <span className="text-muted-foreground">Store</span>
+              <span className="font-medium">{editing.storeName}</span>
+            </div>
+          ) : null}
 
           {mode === "edit" && editing ? (
             <ProductForm
+              key={editing.id}
               product={editing}
               pending={pending}
               error={error}
@@ -275,10 +477,46 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
             />
           ) : null}
           {mode === "create" ? (
-            <ProductForm pending={pending} error={error} onSubmit={save} onCancel={close} />
+            <ProductForm
+              key="create"
+              pending={pending}
+              error={error}
+              onSubmit={save}
+              onCancel={close}
+            />
           ) : null}
-        </SheetContent>
-      </Sheet>
+        </div>
+      </EntityDrawer>
+
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting ? deleting.name : "This item"} and its{" "}
+              {deleting ? deleting.images.length : 0} preview
+              {deleting && deleting.images.length === 1 ? "" : "s"} are removed from the storefront
+              and from object storage. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleting) remove(deleting);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

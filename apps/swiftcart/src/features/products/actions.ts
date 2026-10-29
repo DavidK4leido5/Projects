@@ -2,9 +2,10 @@
 
 import { and, eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
-import { requireStoreOwner } from "@/lib/auth/guards";
+import { redirect } from "next/navigation";
+import { getActor, requireStoreOwner } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db";
-import { productImages, productVariants, products } from "@/lib/db/schema";
+import { productImages, productVariants, products, stores } from "@/lib/db/schema";
 import type { ProductProperty, VariantOptions } from "@/lib/db/schema";
 export type ActionResult = { ok: true } | { ok: false; error: string };
 import { slugify } from "@/lib/slug";
@@ -295,6 +296,14 @@ async function writeImages(productId: string, images: string[]): Promise<void> {
     .values(images.map((key, position) => ({ productId, key, position })));
 }
 
+/** Sellers touch only their own items; admins can edit any item. */
+async function requireProductEditor() {
+  const actor = await getActor();
+  if (actor.kind === "anonymous") redirect("/login");
+  if (actor.kind !== "store" && actor.kind !== "admin") redirect("/");
+  return actor;
+}
+
 export async function createProduct(formData: FormData): Promise<ActionResult> {
   const actor = await requireStoreOwner();
   const input = parseProductForm(formData);
@@ -331,7 +340,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
 }
 
 export async function updateProduct(formData: FormData): Promise<ActionResult> {
-  const actor = await requireStoreOwner();
+  const actor = await requireProductEditor();
   const id = text(formData, "id");
   if (!id) return { ok: false, error: "Missing product id." };
 
@@ -343,9 +352,15 @@ export async function updateProduct(formData: FormData): Promise<ActionResult> {
       id: products.id,
       bannerWideKey: products.bannerWideKey,
       bannerTallKey: products.bannerTallKey,
+      storeSlug: stores.slug,
     })
     .from(products)
-    .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)))
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(
+      actor.kind === "store"
+        ? and(eq(products.id, id), eq(products.storeId, actor.store.id))
+        : eq(products.id, id),
+    )
     .limit(1);
   const existing = owned[0];
   if (!existing) return { ok: false, error: "Product not found." };
@@ -389,12 +404,12 @@ export async function updateProduct(formData: FormData): Promise<ActionResult> {
 
   updateTag(tags.products);
   updateTag(tags.featured);
-  updateTag(tags.store(actor.store.slug));
+  updateTag(tags.store(existing.storeSlug));
   return { ok: true };
 }
 
 export async function deleteProduct(id: string): Promise<ActionResult> {
-  const actor = await requireStoreOwner();
+  const actor = await requireProductEditor();
   if (!id) return { ok: false, error: "Missing product id." };
 
   const owned = await getDb()
@@ -402,9 +417,15 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
       id: products.id,
       bannerWideKey: products.bannerWideKey,
       bannerTallKey: products.bannerTallKey,
+      storeSlug: stores.slug,
     })
     .from(products)
-    .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)))
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(
+      actor.kind === "store"
+        ? and(eq(products.id, id), eq(products.storeId, actor.store.id))
+        : eq(products.id, id),
+    )
     .limit(1);
   const product = owned[0];
   if (!product) return { ok: false, error: "Product not found." };
@@ -432,6 +453,6 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
 
   updateTag(tags.products);
   updateTag(tags.featured);
-  updateTag(tags.store(actor.store.slug));
+  updateTag(tags.store(product.storeSlug));
   return { ok: true };
 }

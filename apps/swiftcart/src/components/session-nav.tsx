@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getActor } from "@/lib/auth/guards";
 import { getCartId } from "@/lib/cart";
@@ -13,9 +14,15 @@ export async function SessionNav() {
     <nav className="ml-auto flex items-center gap-1 text-sm sm:gap-2">
       <Link
         href="/cart"
-        className="whitespace-nowrap rounded-md px-2 py-1.5 text-neutral-700 transition-colors hover:bg-neutral-100 sm:px-3"
+        aria-label={count === 1 ? "Cart, 1 item" : "Cart, " + count + " items"}
+        className="relative grid h-9 w-9 place-items-center rounded-md text-neutral-700 transition-colors hover:bg-neutral-100"
       >
-        Cart ({count})
+        <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+        {count > 0 ? (
+          <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-900 px-1 text-[10px] leading-4 text-white">
+            {count > 99 ? "99+" : count}
+          </span>
+        ) : null}
       </Link>
 
       {actor.kind === "anonymous" ? (

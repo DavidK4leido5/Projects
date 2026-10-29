@@ -6,7 +6,10 @@ const COLUMNS = [
     links: [
       { label: "All products", href: "/" },
       { label: "New arrivals", href: "/?sort=new" },
-      { label: "Stores", href: "/#stores" },
+      // "Stores" used to sit here, copied onto the new-arrivals href: two rows
+      // with one key, and a link that went to the wrong listing. There is no
+      // public stores index yet (only /stores/[slug]), so it comes out until
+      // that page exists.
     ],
   },
   {

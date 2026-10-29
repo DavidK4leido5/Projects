@@ -57,6 +57,7 @@ export async function adminOrderSlices(): Promise<Map<string, AdminOrderSlice[]>
 }
 
 export type AdminMetrics = {
+  orders: number;
   ordersToday: number;
   openSlices: { status: string; count: number }[];
   lowStock: number;
@@ -65,7 +66,8 @@ export type AdminMetrics = {
 /** The daily pulse an operator needs, beside the existing totals. */
 export async function adminMetrics(): Promise<AdminMetrics> {
   const db = getDb();
-  const [today, sliceRows, lowStock] = await Promise.all([
+  const [totals, today, sliceRows, lowStock] = await Promise.all([
+    db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(orders),
     db
       .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(orders)
@@ -85,6 +87,7 @@ export async function adminMetrics(): Promise<AdminMetrics> {
   ]);
 
   return {
+    orders: totals[0]?.count ?? 0,
     ordersToday: today[0]?.count ?? 0,
     openSlices: ["processing", "packed", "shipped"].map((status) => ({
       status,

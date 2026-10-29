@@ -1,94 +1,72 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { formatMoney } from "@repo/shared";
-import { Button, Card } from "@repo/ui";
-import { deleteAnyProduct } from "@/features/admin/actions";
-import { listAllProducts } from "@/features/admin/queries";
 import { PageSkeleton } from "@/components/skeletons";
+import { ProductManager } from "@/components/product-manager";
+import {
+  listProductCategories,
+  listProductsPage,
+  listStoreOptions,
+} from "@/features/products/queries";
 
-async function AdminProductsPageBody() {
-  const products = await listAllProducts();
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function first(value: string | string[] | undefined): string {
+  return typeof value === "string" ? value : "";
+}
+
+async function AdminProductsPageBody({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+
+  const q = first(params.q).trim();
+  const category = first(params.category);
+  const sort = first(params.sort) || "new";
+  const store = first(params.store);
+  const page = Math.max(Number(first(params.page)) || 1, 1);
+
+  const [products, categories, stores] = await Promise.all([
+    listProductsPage({
+      scope: "admin",
+      storeId: store || undefined,
+      q,
+      category,
+      sort,
+      page,
+      perPage: 20,
+    }),
+    listProductCategories(),
+    listStoreOptions(),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="text-sm font-semibold tracking-tight">Products</h2>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           Every product across every store. Deleting a product removes it from its store page and
           from all carts.
         </p>
       </div>
 
-      {products.length === 0 ? (
-        <Card>
-          <p className="text-sm text-neutral-600">No products yet.</p>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
-              <tr>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Product
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Category
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Store
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Price
-                </th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200">
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td className="px-5 py-3">
-                    <Link
-                      href={"/products/" + product.slug}
-                      className="font-medium text-neutral-900 underline-offset-4 hover:underline"
-                    >
-                      {product.name}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3">
-                    <Link
-                      href={"/stores/" + product.storeSlug}
-                      className="text-neutral-600 transition-colors hover:text-neutral-900"
-                    >
-                      {product.storeName}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3 text-neutral-600">{formatMoney(product.priceCents)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end">
-                      <form action={deleteAnyProduct}>
-                        <input type="hidden" name="id" value={product.id} />
-                        <Button variant="ghost" type="submit" className="px-2 py-1">
-                          Delete
-                        </Button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
+      <ProductManager
+        items={products.items}
+        scope="admin"
+        page={products.page}
+        pages={products.pages}
+        total={products.total}
+        q={q}
+        category={category}
+        sort={sort}
+        store={store}
+        stores={stores}
+        categories={categories}
+      />
     </div>
   );
 }
 
-export default function AdminProductsPage() {
+export default function AdminProductsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <AdminProductsPageBody />
+      <AdminProductsPageBody searchParams={searchParams} />
     </Suspense>
   );
 }

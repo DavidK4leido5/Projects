@@ -3,7 +3,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { getDb } from "@/lib/db";
-import { productImages, products, profiles, stores } from "@/lib/db/schema";
+import { productImages, products, profiles, stores, type Role } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { slugify } from "@/lib/slug";
 import { tags } from "@/lib/cache";
@@ -194,4 +194,30 @@ export async function deleteAnyProduct(formData: FormData): Promise<void> {
   for (const image of images) await removeImage(image.key).catch(() => undefined);
 
   updateTag(tags.products);
+}
+
+/** Result contract for the client-callable admin mutations. */
+export type AdminActionResult = { ok: true; warning?: string } | { ok: false; error: string };
+
+/**
+ * Client-facing role change. setUserRole stays the form contract; this wraps it
+ * so an optimistic table can await a plain result.
+ */
+export async function changeUserRole(userId: string, role: Role): Promise<AdminActionResult> {
+  const formData = new FormData();
+  formData.set("userId", userId);
+  formData.set("role", role);
+
+  const result = await setUserRole({}, formData);
+  return result.error ? { ok: false, error: result.error } : { ok: true };
+}
+
+/** Client-facing account delete, wrapping deleteUser for the same reason. */
+export async function removeUserAccount(userId: string): Promise<AdminActionResult> {
+  const formData = new FormData();
+  formData.set("userId", userId);
+
+  const result = await deleteUser({}, formData);
+  if (result.error) return { ok: false, error: result.error };
+  return { ok: true, warning: result.warning };
 }

@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Button, Card, CardTitle } from "@repo/ui";
+import { Button } from "@repo/ui";
 import { CatalogFilters } from "@/components/catalog-filters";
 import { CatalogPagination } from "@/components/catalog-pagination";
+import { EmptyState } from "@/components/empty-state";
 import { ProductCard } from "@/components/product-card";
 import { listStoreFacets, searchProducts } from "@/features/catalog/queries";
+import { SORT_OPTIONS } from "@/lib/search-params";
 
 export type CatalogueSearch = {
   q?: string;
@@ -25,15 +27,44 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
   const q = params.q?.trim() ?? "";
   const store = params.store ?? "";
 
-  const [facets, catalog, bestValue] = await Promise.all([
+  const [facets, catalog] = await Promise.all([
     listStoreFacets(),
     searchProducts({ q, store, sort, inStock, page, perPage: 12 }),
-    searchProducts({ sort: "price-asc", inStock: true, perPage: 8 }),
   ]);
 
   const filtered = Boolean(q || store || inStock || sort !== "new");
-  const onPage = new Set(catalog.items.map((item) => item.id));
-  const rail = bestValue.items.filter((item) => !onPage.has(item.id)).slice(0, 4);
+  const storeName = store ? (facets.find((facet) => facet.slug === store)?.name ?? store) : "";
+  const sortLabel = SORT_OPTIONS.find((option) => option.value === sort)?.label.toLowerCase();
+  const scope = [q ? 'for "' + q + '"' : "", storeName ? "in " + storeName : ""]
+    .filter(Boolean)
+    .join(" ");
+  const conditions = [
+    scope,
+    inStock ? "in stock only" : "",
+    sort !== "new" && sortLabel ? "sorted by " + sortLabel : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const emptyDescription = conditions
+    ? "No matches " + conditions + "."
+    : "No products are listed yet.";
+  /*
+   * The rail renders four cards, so it asks for four and names the ids the page
+   * is already showing. Fetching a larger set and trimming it here put the size
+   * of the rail in the component instead of the query, and left it short when
+   * one of the four was also on the page.
+   */
+  const rail =
+    filtered || catalog.items.length === 0
+      ? []
+      : (
+          await searchProducts({
+            sort: "price-asc",
+            inStock: true,
+            perPage: 4,
+            exclude: catalog.items.map((item) => item.id),
+          })
+        ).items;
 
   return (
     <main id="catalogue" className="mx-auto max-w-6xl scroll-mt-24 px-4 pb-10 pt-6">
@@ -70,15 +101,7 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
       />
 
       {catalog.items.length === 0 ? (
-        <Card id="catalogue-results" className="mt-8 flex scroll-mt-24 flex-col items-start gap-3">
-          <CardTitle>Nothing matched</CardTitle>
-          <p className="text-sm text-neutral-600">
-            Try a different search term, or clear the filters to see the whole catalogue.
-          </p>
-          <Link href="/">
-            <Button variant="secondary">Clear filters</Button>
-          </Link>
-        </Card>
+        <EmptyState description={emptyDescription} />
       ) : (
         <div
           id="catalogue-results"
@@ -110,32 +133,6 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
           </div>
         </section>
       ) : null}
-
-      <section id="stores" className="mt-14 scroll-mt-28">
-        <div className="flex items-end justify-between gap-3 border-b border-neutral-200 pb-3">
-          <h2 className="text-lg font-semibold tracking-tight">Stores</h2>
-          <Link
-            href="/signup/store"
-            className="text-xs text-neutral-600 underline-offset-4 hover:text-neutral-900 hover:underline"
-          >
-            Open yours
-          </Link>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {facets.map((facet) => (
-            <Link
-              key={facet.slug}
-              href={"/stores/" + facet.slug}
-              className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-4 py-3 transition-colors hover:border-neutral-300"
-            >
-              <span className="text-sm font-medium">{facet.name}</span>
-              <span className="text-xs tabular-nums text-neutral-500">
-                {facet.productCount} products
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
     </main>
   );
 }
