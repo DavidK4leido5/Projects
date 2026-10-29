@@ -14,6 +14,7 @@ export async function getCart(userId: string) {
       productSlug: products.slug,
       priceCents: products.priceCents,
       imageKey: products.imageKey,
+      stock: products.stock,
       storeName: stores.name,
       storeSlug: stores.slug,
     })

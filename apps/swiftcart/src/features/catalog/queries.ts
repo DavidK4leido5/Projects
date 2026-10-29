@@ -10,6 +10,7 @@ const productColumns = {
   name: products.name,
   description: products.description,
   priceCents: products.priceCents,
+  stock: products.stock,
   imageKey: products.imageKey,
   createdAt: products.createdAt,
   storeName: stores.name,

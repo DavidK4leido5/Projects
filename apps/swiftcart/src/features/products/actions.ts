@@ -26,6 +26,7 @@ type ProductInput = {
   name: string;
   description: string;
   priceCents: number;
+  stock: number;
   imageKey: string | null;
 };
 
@@ -34,18 +35,21 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
   const description = text(formData, "description");
   const priceCents = parsePriceCents(text(formData, "price"));
   const imageKey = text(formData, "imageKey") || null;
+  const stockRaw = text(formData, "stock");
+  const stock = stockRaw === "" ? 0 : Number(stockRaw);
 
   if (name.length < 2) return { error: "Product name must be at least 2 characters." };
   if (name.length > 80) return { error: "Product name is too long." };
   if (priceCents === null) return { error: "Enter a price greater than zero." };
+  if (!Number.isInteger(stock) || stock < 0)
+    return { error: "Stock must be a whole number, zero or more." };
   if (description.length > 2000) return { error: "Description is too long." };
 
-  return { name, description, priceCents, imageKey };
+  return { name, description, priceCents, stock, imageKey };
 }
 
 export async function createProduct(_prev: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStoreOwner();
-  const store = actor.store;
   const input = parseProductForm(formData);
   if ("error" in input) return input;
 
@@ -53,7 +57,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
 
   await getDb()
     .insert(products)
-    .values({ ...input, slug, storeId: store.id });
+    .values({ ...input, slug, storeId: actor.store.id });
 
   revalidatePath("/");
   revalidatePath("/dashboard");
@@ -62,7 +66,6 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
 
 export async function updateProduct(_prev: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireStoreOwner();
-  const store = actor.store;
   const id = text(formData, "id");
   if (!id) return { error: "Missing product id." };
 
@@ -72,7 +75,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   await getDb()
     .update(products)
     .set(input)
-    .where(and(eq(products.id, id), eq(products.storeId, store.id)));
+    .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)));
 
   revalidatePath("/");
   revalidatePath("/dashboard");
@@ -81,13 +84,12 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
 
 export async function deleteProduct(formData: FormData): Promise<void> {
   const actor = await requireStoreOwner();
-  const store = actor.store;
   const id = text(formData, "id");
   if (!id) return;
 
   await getDb()
     .delete(products)
-    .where(and(eq(products.id, id), eq(products.storeId, store.id)));
+    .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)));
 
   revalidatePath("/");
   revalidatePath("/dashboard");

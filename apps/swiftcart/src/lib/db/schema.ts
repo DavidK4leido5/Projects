@@ -46,6 +46,7 @@ export const products = pgTable(
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     priceCents: integer("price_cents").notNull(),
+    stock: integer("stock").notNull().default(0),
     imageKey: text("image_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -74,6 +75,43 @@ export const cartItems = pgTable(
   ],
 );
 
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // The identity can go away; the order and its money must not.
+    userId: text("user_id").references(() => profiles.id, { onDelete: "set null" }),
+    customerEmail: text("customer_email").notNull(),
+    status: text("status").notNull().default("placed"),
+    totalCents: integer("total_cents").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("orders_user_idx").on(table.userId),
+    index("orders_created_idx").on(table.createdAt),
+  ],
+);
+
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    // Snapshots: renaming or deleting a product must not rewrite history.
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
+    productName: text("product_name").notNull(),
+    storeName: text("store_name").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (table) => [index("order_items_order_idx").on(table.orderId)],
+);
+
+export type Order = typeof orders.$inferSelect;
+export type OrderItem = typeof orderItems.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Store = typeof stores.$inferSelect;
 export type Product = typeof products.$inferSelect;

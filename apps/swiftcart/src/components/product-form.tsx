@@ -13,6 +13,7 @@ type ProductFormProps = {
     name: string;
     description: string;
     priceCents: number;
+    stock: number;
     imageKey: string | null;
   };
 };
@@ -41,19 +42,39 @@ export function ProductForm({ action, product }: ProductFormProps) {
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="price" className="text-sm font-medium text-neutral-900">
-            Price
-          </label>
-          <input
-            id="price"
-            name="price"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={product ? (product.priceCents / 100).toFixed(2) : undefined}
-            className={inputClass}
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="price" className="text-sm font-medium text-neutral-900">
+              Price
+            </label>
+            <input
+              id="price"
+              name="price"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={product ? (product.priceCents / 100).toFixed(2) : undefined}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="stock" className="text-sm font-medium text-neutral-900">
+              Stock
+            </label>
+            <input
+              id="stock"
+              name="stock"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={product ? product.stock : 1}
+              className={inputClass}
+            />
+            <span className="text-xs text-neutral-500">
+              Reaching zero hides the add to cart button.
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5">

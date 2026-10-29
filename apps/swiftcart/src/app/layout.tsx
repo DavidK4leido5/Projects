@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SiteHeader />
         {children}
         <footer className="mx-auto max-w-5xl px-4 py-10 text-xs text-neutral-500">
-          SwiftCart demo. No payments, no orders, no real transactions.
+          SwiftCart demo. No payments are taken. Orders are recorded, not fulfilled by a carrier.
         </footer>
       </body>
     </html>

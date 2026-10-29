@@ -30,9 +30,14 @@ export async function SiteHeader() {
           ) : null}
 
           {actor.kind === "user" ? (
-            <Link href="/cart" className="transition-colors hover:text-neutral-900">
-              Cart
-            </Link>
+            <>
+              <Link href="/orders" className="transition-colors hover:text-neutral-900">
+                Orders
+              </Link>
+              <Link href="/cart" className="transition-colors hover:text-neutral-900">
+                Cart
+              </Link>
+            </>
           ) : null}
 
           {actor.kind === "anonymous" ? (

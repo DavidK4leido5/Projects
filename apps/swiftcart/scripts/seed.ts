@@ -9,7 +9,7 @@ type SeedStore = {
   name: string;
   tagline: string;
   email: string;
-  products: Array<{ name: string; price: number; description: string }>;
+  products: Array<{ name: string; price: number; description: string; stock: number }>;
 };
 
 const STORES: SeedStore[] = [
@@ -23,26 +23,31 @@ const STORES: SeedStore[] = [
         name: "Walnut Desk Tray",
         price: 48,
         description: "Solid walnut, felt base, holds a week of clutter.",
+        stock: 8,
       },
       {
         name: "Brass Ruler 12in",
         price: 26,
         description: "Machined brass with etched markings that never wear off.",
+        stock: 8,
       },
       {
         name: "Canvas Tool Roll",
         price: 62,
         description: "Waxed canvas, eight pockets, rolls to the size of a forearm.",
+        stock: 8,
       },
       {
         name: "Cedar Sharpening Stone",
         price: 34,
         description: "Two grits, set in cedar, ready out of the box.",
+        stock: 8,
       },
       {
         name: "Linen Shop Apron",
         price: 74,
         description: "Heavy linen, cross-back straps, breaks in after a week.",
+        stock: 8,
       },
     ],
   },
@@ -128,6 +133,7 @@ async function main() {
         name: item.name,
         description: item.description,
         priceCents: Math.round(item.price * 100),
+        stock: item.stock,
       })),
     );
   }

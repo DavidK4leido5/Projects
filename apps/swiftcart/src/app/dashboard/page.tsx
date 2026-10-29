@@ -57,6 +57,7 @@ export default async function DashboardPage() {
                 <tr key={item.id}>
                   <td className="px-5 py-3 font-medium text-neutral-900">{item.name}</td>
                   <td className="px-5 py-3 text-neutral-600">{formatMoney(item.priceCents)}</td>
+                  <td className="px-5 py-3 text-neutral-600">{item.stock}</td>
                   <td className="px-5 py-3 text-neutral-600">{formatDate(item.createdAt)}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">

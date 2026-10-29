@@ -3,13 +3,22 @@ import { formatMoney } from "@repo/shared";
 import { Button, Card, CardTitle } from "@repo/ui";
 import { getCart } from "@/features/cart/queries";
 import { removeFromCart, setQuantity } from "@/features/cart/actions";
+import { placeOrder } from "@/features/orders/actions";
 import { requireUser } from "@/lib/auth/guards";
 
 export const metadata = { title: "Cart" };
 
-export default async function CartPage() {
+export default async function CartPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const actor = await requireUser();
   const cart = await getCart(actor.profile.id);
+
+  const oversold = cart.items.filter((item) => item.quantity > item.stock);
+  const blocked = oversold.length > 0;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -19,6 +28,16 @@ export default async function CartPage() {
           Saved to your account. Sign in on another device and it is still here.
         </p>
       </div>
+
+      {error === "stock" ? (
+        <p
+          role="alert"
+          className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          Someone bought the last of something while this order was forming. Nothing was charged.
+          Adjust the quantities and try again.
+        </p>
+      ) : null}
 
       {cart.items.length === 0 ? (
         <Card className="mt-8 flex flex-col items-start gap-3">
@@ -59,8 +78,13 @@ export default async function CartPage() {
                     </Link>
                     <span className="text-xs text-neutral-500">{item.storeName}</span>
                     <span className="text-xs text-neutral-500">
-                      {formatMoney(item.priceCents)} each
+                      {formatMoney(item.priceCents)} each, {item.stock} in stock
                     </span>
+                    {item.quantity > item.stock ? (
+                      <span className="text-xs text-red-600">
+                        Only {item.stock} left. Lower the quantity to keep it.
+                      </span>
+                    ) : null}
                   </div>
 
                   <form action={setQuantity} className="flex items-end gap-2">
@@ -68,10 +92,10 @@ export default async function CartPage() {
                     <label className="flex flex-col gap-1 text-xs text-neutral-500">
                       Quantity
                       <input
-                        type="number"
                         name="quantity"
+                        type="number"
                         min={1}
-                        max={99}
+                        max={Math.max(item.stock, 1)}
                         defaultValue={item.quantity}
                         className="w-16 rounded-md border border-neutral-200 px-2 py-1.5 text-sm text-neutral-900"
                       />
@@ -106,9 +130,15 @@ export default async function CartPage() {
             <p className="text-xs text-neutral-500">
               {cart.itemCount} {cart.itemCount === 1 ? "item" : "items"} in the cart.
             </p>
-            <Button variant="secondary" disabled>
-              Checkout is out of scope for this demo
-            </Button>
+            <form action={placeOrder}>
+              <Button type="submit" disabled={blocked} className="w-full">
+                Place order
+              </Button>
+            </form>
+            <p className="text-xs text-neutral-500">
+              No payment is taken. Placing an order reserves the stock and records it in your
+              account.
+            </p>
           </Card>
         </div>
       )}

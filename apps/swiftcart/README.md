@@ -1,7 +1,7 @@
 # SwiftCart
 
-A storefront where independent stores list what they sell. Browsing, a persisted cart, a seller
-dashboard, and an admin area. No checkout, no payments.
+A storefront where independent stores list what they sell. Browsing, a persisted cart, checkout into
+an order, a seller dashboard, and an admin area. No payment is ever taken.
 
 The point is the seams: where data comes from, who is allowed to read it, and what happens when one
 of those pieces is swapped out.
@@ -53,6 +53,23 @@ the route does not confirm that the row exists.
 **Storage.** `src/lib/storage.ts` exposes a three method interface and one adapter. Images are never
 public bucket URLs; they stream through `/api/images/[...key]`, so changing providers means editing
 one file.
+
+## Checkout and stock
+
+Placing an order is the one place that mutates two tables at once. `src/features/orders/actions.ts`
+claims stock row by row with a conditional update:
+
+```sql
+update products set stock = stock - $qty where id = $id and stock >= $qty
+```
+
+Zero rows returned means someone else took the last unit, so the earlier claims are put back and the
+shopper is sent to `/cart?error=stock`. The Neon HTTP driver has no transactions, so compensation
+stands in for one; the failure mode is under-counted stock after a crash, never an oversell.
+
+The order then stores snapshots: product name, store name, and price at the moment of purchase.
+Renaming a product, or deleting it outright, changes nothing in order history. `order_items.product_id`
+is nullable with `on delete set null` for exactly that reason.
 
 ## Money
 
@@ -109,5 +126,5 @@ session-data cookie the proxy mints. Object storage has no bucket variable in Ne
 
 ## Out of scope on purpose
 
-Checkout, payments, orders, email, search, pagination, image resizing, audit logging.
+Payments, tax, shipping, refunds, email, search, pagination, image resizing, audit logging.
 Adding any of them should mean a new feature folder, not a new pattern.

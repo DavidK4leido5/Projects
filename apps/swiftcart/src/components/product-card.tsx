@@ -23,6 +23,7 @@ export function ProductCard({ product }: { product: ProductCardModel }) {
           <h3 className="text-sm font-semibold tracking-tight">{product.name}</h3>
           <span className="text-sm text-neutral-600">{formatMoney(product.priceCents)}</span>
         </div>
+        {product.stock === 0 ? <p className="px-4 pb-1 text-xs text-red-600">Sold out</p> : null}
       </Link>
       <div className="px-4 pb-4 text-xs text-neutral-500">
         <Link
