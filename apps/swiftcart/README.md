@@ -52,8 +52,10 @@ device and the Next optimizer never touches the bytes. Without `NEXT_PUBLIC_CLOU
 the loader returns the app's own `/api/images/<key>` route instead, which keeps local work possible.
 
 The hero is art-directed with `getImageProps` rather than two `<Image>` elements, because a
-`<picture>` needs different `srcset`s per media query without shipping both files. The frame is
-`aspect-[9/16]` on phones and `aspect-video` from `sm` up, matching the two banner files exactly.
+`<picture>` needs different `srcset`s per media query without shipping both files. The frame takes the
+banner's own ratio: full width and 9:16 on phones, a centred 16:9 stage capped at
+`clamp(300px,40vw,560px)` tall on desktop. Nothing is cropped, and a blurred copy of the active
+banner fills the bands beside the stage.
 
 ## Rendering and caching
 

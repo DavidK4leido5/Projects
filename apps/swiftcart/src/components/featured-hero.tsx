@@ -54,11 +54,31 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       onBlurCapture={() => setPaused(false)}
     >
       {/*
-        Height is capped rather than locked to the banner ratio: full-bleed width at
-        16:9 would be ~810px tall on desktop, which dwarfed the page. The upload
-        still requires 16:9 art; object-cover crops it to the frame.
+        The frame takes the banner's own ratio at the old capped height, so the whole
+        image shows and nothing is cropped. Phones get the 9:16 file edge to edge;
+        desktop centres a 16:9 stage inside the dark band instead of stretching it
+        past 3:1 and slicing the artwork.
       */}
-      <div className="relative h-[min(78vh,640px)] w-full sm:h-[clamp(300px,40vw,560px)]">
+      {/* Blurred copy of the active banner fills the side bands so the stage never
+          looks like letterboxing. Only the current slide is mounted. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        {slides.map((slide, slideIndex) =>
+          slideIndex === index ? (
+            <picture key={slide.id}>
+              <source media="(min-width: 640px)" srcSet={slide.wideSrcSet} sizes="100vw" />
+              <img
+                src={slide.tallSrc}
+                srcSet={slide.tallSrcSet}
+                sizes="100vw"
+                alt=""
+                className="h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+              />
+            </picture>
+          ) : null,
+        )}
+      </div>
+
+      <div className="relative mx-auto aspect-[9/16] w-full sm:aspect-video sm:h-[clamp(300px,40vw,560px)] sm:w-auto">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (
