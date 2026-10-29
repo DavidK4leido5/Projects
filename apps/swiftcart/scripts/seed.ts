@@ -203,7 +203,7 @@ async function main() {
         .values(keys.map((key, position) => ({ productId: product.id, key, position })));
 
       if (item.featured) {
-        const wide = await uploadTile(item.name, 2500, 1000, "banner-wide");
+        const wide = await uploadTile(item.name, 3168, 1344, "banner-wide");
         const tall = await uploadTile(item.name, 1080, 1920, "banner-tall");
         await db
           .update(products)

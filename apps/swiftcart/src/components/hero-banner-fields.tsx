@@ -26,7 +26,7 @@ const SLOTS: SlotConfig[] = [
     label: "Desktop banner",
     min: 1.6,
     max: 3.4,
-    hint: "5:2 ideal, e.g. 3264x1312",
+    hint: "3168x1344 recommended",
     frame: "aspect-[5/2]",
   },
   {

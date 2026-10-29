@@ -44,10 +44,10 @@ or deleting the item, removes the objects from both stores rather than orphaning
 | Desktop | 5:2   | 3264x1312        | 1.6:1 to 3.4:1  |
 | Mobile  | 9:16  | 1080x1920        | 0.45:1 to 0.7:1 |
 
-The band is `clamp(300px, 40vw, 640px)` tall. At `40vw` it is exactly 2.5:1, so 5:2 art fills it with
-no crop between roughly 750px and 1600px viewport width. Above 1600px the height cap engages, the band
-gets wider than the art, and `object-cover` trims the sides evenly. Phones show the 9:16 file in a 9:16
-frame, so that slot never crops.
+The band is `clamp(300px, 42.4vw, 640px)` tall. At `42.4vw` it is exactly 2.36:1, the ratio of
+3168x1344, so that artwork fills it with no crop up to roughly 1500px viewport width. Above that the
+height cap engages, the band gets wider than the art, and `object-cover` trims the sides evenly.
+Phones show the 9:16 file in a 9:16 frame, so that slot never crops.
 
 Both slots are mandatory while an item is featured, and both are validated in the browser before
 upload. The uploaded file is kept at full size; Cloudinary derives every delivered width.
