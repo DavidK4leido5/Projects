@@ -86,6 +86,28 @@ export async function searchProducts(filters: CatalogFilters) {
   return { items, total, page, perPage, pages: Math.max(1, Math.ceil(total / perPage)) };
 }
 
+/** The newest product still in stock, falling back to the newest of anything. */
+export async function getFeaturedProduct() {
+  const live = await getDb()
+    .select(productColumns)
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(gt(products.stock, 0))
+    .orderBy(desc(products.createdAt))
+    .limit(1);
+
+  if (live[0]) return live[0];
+
+  const any = await getDb()
+    .select(productColumns)
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .orderBy(desc(products.createdAt))
+    .limit(1);
+
+  return any[0] ?? null;
+}
+
 export async function listStoreFacets() {
   return getDb()
     .select({
