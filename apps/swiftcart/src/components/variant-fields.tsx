@@ -1,18 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, X } from "lucide-react";
-import { Button, Checkbox, Input } from "@repo/ui";
+import { Button, Checkbox } from "@repo/ui";
 import type { ProductProperty } from "@/lib/db/schema";
 
-type Row = {
-  options: Record<string, string>;
-  price: string;
-  stock: string;
-  sku: string;
-  imageKey: string;
-};
+type ValueRow = { id: string; name: string; imageKey: string };
+type SubRow = { id: string; name: string };
+type Leaf = { price: string; stock: string; sku: string; imageKey: string };
 
 type InitialVariant = {
   options: Record<string, string>;
@@ -22,38 +18,17 @@ type InitialVariant = {
   imageKey: string | null;
 };
 
-const MAX_PROPERTIES = 3;
+const EMPTY_LEAF: Leaf = { price: "", stock: "0", sku: "", imageKey: "" };
 
-function keyOf(options: Record<string, string>): string {
-  return Object.keys(options)
-    .sort()
-    .map((name) => name + "=" + options[name])
-    .join("|");
+function uid(): string {
+  return Math.random().toString(36).slice(2, 9);
 }
 
-function mergeRows(combos: Record<string, string>[], rows: Row[]): Row[] {
-  const byKey = new Map(rows.map((row) => [keyOf(row.options), row]));
-  return combos.map(
-    (options) =>
-      byKey.get(keyOf(options)) ?? { options, price: "", stock: "0", sku: "", imageKey: "" },
-  );
-}
-
-function combinations(properties: ProductProperty[]): Record<string, string>[] {
-  if (properties.length === 0) return [];
-  let combos: Record<string, string>[] = [{}];
-  for (const property of properties) {
-    const next: Record<string, string>[] = [];
-    for (const combo of combos) {
-      for (const value of property.values) next.push({ ...combo, [property.name]: value });
-    }
-    combos = next;
-  }
-  return combos;
-}
-
-const PRESETS = ["Size", "Color", "Material", "Fit", "Length", "Roast"];
-
+/**
+ * One table, typed directly. The group row names the variation ("Color"), each
+ * row under it is a value, and every value can take the same second-level list
+ * ("Size"). Leaves are the combinations and carry price, stock, and image.
+ */
 export function VariantFields({
   initialProperties,
   initialVariants,
@@ -62,105 +37,141 @@ export function VariantFields({
   initialVariants: InitialVariant[];
 }) {
   const [enabled, setEnabled] = useState(initialProperties.length > 0);
-  const [properties, setProperties] = useState<ProductProperty[]>(initialProperties);
-  const [rows, setRows] = useState<Row[]>(() =>
-    initialVariants.map((variant) => ({
-      options: variant.options,
-      price: variant.priceCents ? (variant.priceCents / 100).toFixed(2) : "",
-      stock: String(variant.stock),
-      sku: variant.sku ?? "",
-      imageKey: variant.imageKey ?? "",
-    })),
+  const [groupName, setGroupName] = useState(initialProperties[0]?.name ?? "Color");
+  const [subName, setSubName] = useState(initialProperties[1]?.name ?? "Size");
+  const [hasSub, setHasSub] = useState(Boolean(initialProperties[1]));
+
+  const [values, setValues] = useState<ValueRow[]>(() => {
+    const names = initialProperties[0]?.values ?? [];
+    return names.map((name) => {
+      const match = initialVariants.find(
+        (variant) => variant.options[initialProperties[0]!.name] === name,
+      );
+      return { id: uid(), name, imageKey: match?.imageKey ?? "" };
+    });
+  });
+
+  const [subs, setSubs] = useState<SubRow[]>(() =>
+    (initialProperties[1]?.values ?? []).map((name) => ({ id: uid(), name })),
   );
-  const [draftValue, setDraftValue] = useState<Record<number, string>>({});
+
+  const [leaves, setLeaves] = useState<Record<string, Leaf>>(() => {
+    const map: Record<string, Leaf> = {};
+    if (initialProperties.length === 0) return map;
+    const first = initialProperties[0]!;
+    const second = initialProperties[1];
+
+    for (const variant of initialVariants) {
+      const value = variant.options[first.name] ?? "";
+      const sub = second ? (variant.options[second.name] ?? "") : "";
+      const key = sub ? value + "||" + sub : value;
+      map[key] = {
+        price: variant.priceCents ? (variant.priceCents / 100).toFixed(2) : "",
+        stock: String(variant.stock),
+        sku: variant.sku ?? "",
+        imageKey: variant.imageKey ?? "",
+      };
+    }
+    return map;
+  });
+
+  const [draftValue, setDraftValue] = useState("");
+  const [draftSub, setDraftSub] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Keep typed values when the option set changes; new combos start blank.
-  const merged = mergeRows(combinations(properties), rows);
-
-  function commit(next: Row[]) {
-    setRows(next);
+  function leafKey(valueName: string, subNameValue: string): string {
+    return subNameValue ? valueName + "||" + subNameValue : valueName;
   }
 
-  function updateRow(index: number, patch: Partial<Row>) {
-    const next = merged.map((row, position) => (position === index ? { ...row, ...patch } : row));
-    commit(next);
+  function leafOf(valueName: string, subNameValue: string): Leaf {
+    return leaves[leafKey(valueName, subNameValue)] ?? EMPTY_LEAF;
   }
 
-  function addOption() {
-    if (properties.length >= MAX_PROPERTIES) return;
-    setProperties((current) => [...current, { name: "", values: [] }]);
+  function setLeaf(valueName: string, subNameValue: string, patch: Partial<Leaf>) {
+    const key = leafKey(valueName, subNameValue);
+    setLeaves((current) => ({ ...current, [key]: { ...(current[key] ?? EMPTY_LEAF), ...patch } }));
   }
 
-  function renameOption(index: number, name: string) {
-    setProperties((current) =>
-      current.map((property, position) => (position === index ? { ...property, name } : property)),
-    );
+  function addValue() {
+    const name = draftValue.trim();
+    if (!name) return;
+    if (values.some((value) => value.name.toLowerCase() === name.toLowerCase())) return;
+    setValues((current) => [...current, { id: uid(), name, imageKey: "" }]);
+    setDraftValue("");
   }
 
-  function addValue(index: number) {
-    const value = (draftValue[index] ?? "").trim();
-    if (!value) return;
-    setProperties((current) =>
-      current.map((property, position) =>
-        position === index && !property.values.includes(value)
-          ? { ...property, values: [...property.values, value] }
-          : property,
-      ),
-    );
-    setDraftValue((current) => ({ ...current, [index]: "" }));
+  function addSub() {
+    const name = draftSub.trim();
+    if (!name) return;
+    if (subs.some((sub) => sub.name.toLowerCase() === name.toLowerCase())) return;
+    setSubs((current) => [...current, { id: uid(), name }]);
+    setDraftSub("");
   }
 
-  function removeValue(index: number, value: string) {
-    setProperties((current) =>
-      current.map((property, position) =>
-        position === index
-          ? { ...property, values: property.values.filter((entry) => entry !== value) }
-          : property,
-      ),
-    );
-  }
-
-  async function upload(index: number, file: File | undefined) {
+  async function uploadValue(valueId: string, file: File | undefined) {
     if (!file) return;
-    setBusy(keyOf(merged[index]!.options));
+    setBusy(valueId);
     try {
       const body = new FormData();
       body.set("file", file);
       const response = await fetch("/api/upload", { method: "POST", body });
       const payload = (await response.json()) as { key?: string };
-      const key = payload.key;
-      if (!key) return;
-
-      // A colour usually looks the same in every size: copy it across.
-      const first = properties[0];
-      const shared = first ? merged[index]!.options[first.name] : undefined;
-
-      commit(
-        merged.map((row, position) => {
-          if (position === index) return { ...row, imageKey: key };
-          if (first && shared && row.options[first.name] === shared && !row.imageKey) {
-            return { ...row, imageKey: key };
-          }
-          return row;
-        }),
-      );
+      if (payload.key) {
+        setValues((current) =>
+          current.map((value) =>
+            value.id === valueId ? { ...value, imageKey: payload.key! } : value,
+          ),
+        );
+      }
     } finally {
       setBusy(null);
     }
   }
 
-  const payload = merged.map((row) => ({
-    options: row.options,
-    price: row.price,
-    stock: Number(row.stock || 0),
-    sku: row.sku,
-    imageKey: row.imageKey,
-  }));
+  async function uploadLeaf(valueName: string, subNameValue: string, file: File | undefined) {
+    if (!file) return;
+    setBusy(leafKey(valueName, subNameValue));
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const response = await fetch("/api/upload", { method: "POST", body });
+      const payload = (await response.json()) as { key?: string };
+      if (payload.key) setLeaf(valueName, subNameValue, { imageKey: payload.key });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const properties: ProductProperty[] = enabled
+    ? [
+        { name: groupName.trim() || "Option", values: values.map((value) => value.name) },
+        ...(hasSub && subs.length > 0
+          ? [{ name: subName.trim() || "Size", values: subs.map((sub) => sub.name) }]
+          : []),
+      ]
+    : [];
+
+  const payload = enabled
+    ? values.flatMap((value) => {
+        const combos = hasSub && subs.length > 0 ? subs.map((sub) => sub.name) : [""];
+        return combos.map((sub) => {
+          const leaf = leafOf(value.name, sub);
+          const options: Record<string, string> = { [groupName.trim() || "Option"]: value.name };
+          if (sub) options[subName.trim() || "Size"] = sub;
+          return {
+            options,
+            price: leaf.price,
+            stock: Number(leaf.stock || 0),
+            sku: leaf.sku,
+            imageKey: leaf.imageKey || value.imageKey,
+          };
+        });
+      })
+    : [];
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border px-3 py-3">
-      <input type="hidden" name="properties" value={JSON.stringify(enabled ? properties : [])} />
+      <input type="hidden" name="properties" value={JSON.stringify(properties)} />
       <input type="hidden" name="variants" value={enabled ? JSON.stringify(payload) : ""} />
 
       <label className="flex items-start gap-3">
@@ -170,160 +181,231 @@ export function VariantFields({
           className="mt-0.5"
         />
         <span className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">This item has options</span>
+          <span className="text-sm font-medium">This item has variations</span>
           <span className="text-xs text-muted-foreground">
-            Sizes, colours, or anything else the buyer picks. Each combination gets its own stock.
+            Type the rows directly. Each combination gets its own price, stock, and preview.
           </span>
         </span>
       </label>
 
       {enabled ? (
         <>
-          <div className="flex flex-col gap-3">
-            {properties.map((property, index) => (
-              <div key={index} className="flex flex-col gap-2 rounded-md border border-border p-3">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={property.name}
-                    onChange={(event) => renameOption(index, event.target.value)}
-                    placeholder="Option name"
-                    list="variant-presets"
-                    className="h-8 max-w-40 text-xs"
-                  />
-                  <datalist id="variant-presets">
-                    {PRESETS.map((preset) => (
-                      <option key={preset} value={preset} />
-                    ))}
-                  </datalist>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      setProperties((current) =>
-                        current.filter((_, position) => position !== index),
-                      )
-                    }
-                  >
-                    <X />
-                    Remove
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {property.values.map((value) => (
-                    <span
-                      key={value}
-                      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
-                    >
-                      {value}
-                      <button
-                        type="button"
-                        aria-label={"Remove " + value}
-                        onClick={() => removeValue(index, value)}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    value={draftValue[index] ?? ""}
-                    onChange={(event) =>
-                      setDraftValue((current) => ({ ...current, [index]: event.target.value }))
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        addValue(index);
-                      }
-                    }}
-                    placeholder="Add value, press Enter"
-                    className="h-7 w-40 rounded-md border border-border px-2 text-xs"
-                  />
-                </div>
-              </div>
-            ))}
-
-            {properties.length < MAX_PROPERTIES ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={addOption}
-                className="self-start"
-              >
+          <div className="flex items-center gap-2">
+            <input
+              value={groupName}
+              onChange={(event) => setGroupName(event.target.value)}
+              placeholder="Variation name"
+              className="h-8 w-40 rounded-md border border-border px-2 text-sm font-medium"
+            />
+            <div className="flex items-center gap-2">
+              <input
+                value={draftValue}
+                onChange={(event) => setDraftValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addValue();
+                  }
+                }}
+                placeholder="Add value, press Enter"
+                className="h-8 w-48 rounded-md border border-border px-2 text-xs"
+              />
+              <Button type="button" size="sm" variant="ghost" onClick={addValue}>
                 <Plus />
-                Add option
+                Add
               </Button>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-md border border-border">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/40 text-left text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-2 font-medium">{groupName || "Option"}</th>
+                  <th className="px-2 py-2 font-medium">Price</th>
+                  <th className="px-2 py-2 font-medium">Stock</th>
+                  <th className="px-2 py-2 font-medium">SKU</th>
+                  <th className="px-2 py-2 font-medium">Preview</th>
+                  <th className="w-8 px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {values.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
+                      Add a value like Bone or Black.
+                    </td>
+                  </tr>
+                ) : null}
+
+                {values.map((value) => {
+                  const single = !hasSub || subs.length === 0;
+                  return (
+                    <Fragment key={value.id}>
+                      <tr className="border-t border-border bg-muted/20">
+                        <td className="px-2 py-2 font-medium">{value.name}</td>
+                        {single ? (
+                          <>
+                            <td className="px-2 py-2">
+                              <PriceInput
+                                value={leafOf(value.name, "").price}
+                                onChange={(price) => setLeaf(value.name, "", { price })}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <StockInput
+                                value={leafOf(value.name, "").stock}
+                                onChange={(stock) => setLeaf(value.name, "", { stock })}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <SkuInput
+                                value={leafOf(value.name, "").sku}
+                                onChange={(sku) => setLeaf(value.name, "", { sku })}
+                              />
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-2 py-2 text-muted-foreground" colSpan={3}>
+                              {subs.length} {subs.length === 1 ? "combination" : "combinations"}{" "}
+                              below
+                            </td>
+                          </>
+                        )}
+                        <td className="px-2 py-2">
+                          <PreviewCell
+                            value={value.imageKey}
+                            busy={busy === value.id}
+                            onPick={(file) => void uploadValue(value.id, file)}
+                            onClear={() =>
+                              setValues((current) =>
+                                current.map((row) =>
+                                  row.id === value.id ? { ...row, imageKey: "" } : row,
+                                ),
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <button
+                            type="button"
+                            aria-label={"Remove " + value.name}
+                            onClick={() =>
+                              setValues((current) => current.filter((row) => row.id !== value.id))
+                            }
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </td>
+                      </tr>
+
+                      {!single
+                        ? subs.map((sub) => {
+                            const leaf = leafOf(value.name, sub.name);
+                            return (
+                              <tr key={value.id + sub.id} className="border-t border-border">
+                                <td className="py-2 pl-6 pr-2 text-muted-foreground">{sub.name}</td>
+                                <td className="px-2 py-2">
+                                  <PriceInput
+                                    value={leaf.price}
+                                    onChange={(price) => setLeaf(value.name, sub.name, { price })}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <StockInput
+                                    value={leaf.stock}
+                                    onChange={(stock) => setLeaf(value.name, sub.name, { stock })}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <SkuInput
+                                    value={leaf.sku}
+                                    onChange={(sku) => setLeaf(value.name, sub.name, { sku })}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <PreviewCell
+                                    value={leaf.imageKey}
+                                    busy={busy === leafKey(value.name, sub.name)}
+                                    onPick={(file) => void uploadLeaf(value.name, sub.name, file)}
+                                    onClear={() => setLeaf(value.name, sub.name, { imageKey: "" })}
+                                  />
+                                </td>
+                                <td />
+                              </tr>
+                            );
+                          })
+                        : null}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                setHasSub((current) => {
+                  const next = !current;
+                  if (next && subName.trim().toLowerCase() === groupName.trim().toLowerCase()) {
+                    setSubName(groupName.trim().toLowerCase() === "color" ? "Size" : "Color");
+                  }
+                  return next;
+                })
+              }
+            >
+              {hasSub ? "Remove second variation" : "Add a second variation"}
+            </Button>
+
+            {hasSub ? (
+              <>
+                <input
+                  value={subName}
+                  onChange={(event) => setSubName(event.target.value)}
+                  placeholder="Size"
+                  className="h-8 w-28 rounded-md border border-border px-2 text-xs font-medium"
+                />
+                {subs.map((sub) => (
+                  <span
+                    key={sub.id}
+                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
+                  >
+                    {sub.name}
+                    <button
+                      type="button"
+                      aria-label={"Remove " + sub.name}
+                      onClick={() =>
+                        setSubs((current) => current.filter((row) => row.id !== sub.id))
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={draftSub}
+                  onChange={(event) => setDraftSub(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addSub();
+                    }
+                  }}
+                  placeholder="Add size, press Enter"
+                  className="h-8 w-40 rounded-md border border-border px-2 text-xs"
+                />
+              </>
             ) : null}
           </div>
 
-          {merged.length > 0 ? (
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/40 text-left text-muted-foreground">
-                  <tr>
-                    {properties.map((property) => (
-                      <th key={property.name} className="px-2 py-2 font-medium">
-                        {property.name || "Option"}
-                      </th>
-                    ))}
-                    <th className="px-2 py-2 font-medium">Price</th>
-                    <th className="px-2 py-2 font-medium">Stock</th>
-                    <th className="px-2 py-2 font-medium">SKU</th>
-                    <th className="px-2 py-2 font-medium">Preview</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {merged.map((row, index) => (
-                    <tr key={keyOf(row.options)} className="border-t border-border">
-                      {properties.map((property) => (
-                        <td key={property.name} className="px-2 py-2">
-                          {row.options[property.name]}
-                        </td>
-                      ))}
-                      <td className="px-2 py-2">
-                        <input
-                          value={row.price}
-                          onChange={(event) => updateRow(index, { price: event.target.value })}
-                          placeholder="base"
-                          inputMode="decimal"
-                          className="h-7 w-20 rounded-md border border-border px-2 text-xs"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          value={row.stock}
-                          onChange={(event) => updateRow(index, { stock: event.target.value })}
-                          inputMode="numeric"
-                          className="h-7 w-16 rounded-md border border-border px-2 text-xs"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          value={row.sku}
-                          onChange={(event) => updateRow(index, { sku: event.target.value })}
-                          className="h-7 w-28 rounded-md border border-border px-2 text-xs"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <VariantImage
-                          value={row.imageKey}
-                          busy={busy === keyOf(row.options)}
-                          onPick={(file) => void upload(index, file)}
-                          onClear={() => updateRow(index, { imageKey: "" })}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-
           <p className="text-xs text-muted-foreground">
-            Blank price uses the item price. Stock is per combination. An image set on one row is
-            copied to the other rows sharing the first option value.
+            Blank price uses the item price. The second variation is shared by every value above it,
+            so the buyer never sees a combination that does not exist.
           </p>
         </>
       ) : null}
@@ -331,7 +413,40 @@ export function VariantFields({
   );
 }
 
-function VariantImage({
+function PriceInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder="base"
+      inputMode="decimal"
+      className="h-7 w-20 rounded-md border border-border px-2 text-xs"
+    />
+  );
+}
+
+function StockInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      inputMode="numeric"
+      className="h-7 w-16 rounded-md border border-border px-2 text-xs"
+    />
+  );
+}
+
+function SkuInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-7 w-24 rounded-md border border-border px-2 text-xs"
+    />
+  );
+}
+
+function PreviewCell({
   value,
   busy,
   onPick,
