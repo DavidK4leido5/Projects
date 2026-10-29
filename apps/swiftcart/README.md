@@ -61,7 +61,9 @@ shared cache entry would leak one shopper's data to another.
 request and are cached from then on.
 
 **Skeletons** live in `src/components/skeletons.tsx`. Route-level `loading.tsx` files cover the
-detail routes, and the Suspense fallbacks cover the streamed holes.
+detail routes, and the Suspense fallbacks cover the streamed holes. A loading state mirrors its own
+page and nothing else: the header and footer belong to the layout shell, so they must stay rendered
+while a route streams. Anything extra in a `loading.tsx` reads as the shell breaking.
 
 **Operational note.** `db:seed`, `db:reset`, and `db:migrate` write straight to Postgres and bypass
 the server actions, so they do not invalidate tags. After running one, restart the server (which clears
