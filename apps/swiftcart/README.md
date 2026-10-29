@@ -75,7 +75,6 @@ Seeded accounts, all with password `demo1234`:
 ```
 admin@swiftcart.dev     admin
 demo@swiftcart.dev      store   (Northwind Supply)
-atlas@swiftcart.dev     store   (Atlas Ceramics)
 shopper@swiftcart.dev   user
 ```
 

@@ -46,30 +46,6 @@ const STORES: SeedStore[] = [
       },
     ],
   },
-  {
-    slug: "atlas-ceramics",
-    name: "Atlas Ceramics",
-    tagline: "Small-batch stoneware from a two-person studio.",
-    email: "atlas@swiftcart.dev",
-    products: [
-      {
-        name: "Stoneware Mug",
-        price: 28,
-        description: "Speckled clay, matte glaze, 12oz. Dishwasher safe.",
-      },
-      {
-        name: "Wide Serving Bowl",
-        price: 56,
-        description: "Hand-thrown, 11 inches across, good for salad or fruit.",
-      },
-      { name: "Bud Vase Trio", price: 44, description: "Three heights, cut flowers or dry stems." },
-      {
-        name: "Espresso Cups (2)",
-        price: 38,
-        description: "Small cups with a thick lip that keeps heat in.",
-      },
-    ],
-  },
 ];
 
 const ADMIN = { email: "admin@swiftcart.dev", name: "Site Admin" };
@@ -161,7 +137,7 @@ async function main() {
     .insert(profiles)
     .values({ id: shopperId, name: SHOPPER.name, email: SHOPPER.email, role: "user" });
 
-  console.log("seeded 1 admin, 2 stores, 1 shopper");
+  console.log("seeded 1 admin, 1 store, 1 shopper");
   console.log("password for all: " + PASSWORD);
 }
 
