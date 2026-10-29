@@ -29,14 +29,14 @@ export function CatalogFilters({ stores, filtered }: { stores: StoreOption[]; fi
     const next = withCatalogueParam(params, key, value);
     startTransition(() => {
       setParams(next);
-      router.replace(catalogueHref(next), { scroll: false });
+      router.push(catalogueHref(next), { scroll: false });
     });
   }
 
   function clear() {
     startTransition(() => {
       setParams({});
-      router.replace("/", { scroll: false });
+      router.push("/", { scroll: false });
     });
   }
 

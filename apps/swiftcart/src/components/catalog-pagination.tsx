@@ -15,7 +15,7 @@ export function CatalogPagination({ page, pages }: { page: number; pages: number
   function go(to: number) {
     const next = withCatalogueParam(readCatalogueParams(searchParams), "page", String(to));
     startTransition(() => {
-      router.replace(catalogueHref(next), { scroll: false });
+      router.push(catalogueHref(next), { scroll: false });
       requestAnimationFrame(() => {
         document.getElementById("catalogue-results")?.scrollIntoView({ block: "start" });
       });
