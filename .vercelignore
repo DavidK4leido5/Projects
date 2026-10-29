@@ -1,0 +1,11 @@
+# The CLI walked past .gitignore and tried to upload the local Turbo cache:
+# 13.4 GB, which trips the 100 MB per-file limit before the build starts.
+.turbo
+**/.turbo
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+# Local secrets never belong in a deployment snapshot
+.env
+.env.*
+

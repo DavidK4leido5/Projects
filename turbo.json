@@ -5,7 +5,14 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["DATABASE_URL", "OBJECT_STORAGE_*", "AWS_*", "NEXT_PUBLIC_*"]
+      "env": [
+        "DATABASE_URL",
+        "OBJECT_STORAGE_*",
+        "AWS_*",
+        "NEXT_PUBLIC_*",
+        "NEON_*",
+        "CLOUDINARY_*"
+      ]
     },
     "dev": {
       "cache": false,
