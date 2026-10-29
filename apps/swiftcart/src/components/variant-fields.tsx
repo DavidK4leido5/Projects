@@ -6,9 +6,15 @@ import { ImagePlus, Loader2, Plus, X } from "lucide-react";
 import { Button, Checkbox } from "@repo/ui";
 import type { ProductProperty } from "@/lib/db/schema";
 
-type LeafFields = { price: string; stock: string; sku: string; imageKey: string };
-type Child = LeafFields & { id: string; name: string };
-type Parent = LeafFields & { id: string; name: string; children: Child[] };
+type Group = { id: string; name: string; values: { id: string; name: string }[] };
+type Row = {
+  id: string;
+  picks: Record<string, string>;
+  price: string;
+  stock: string;
+  sku: string;
+  imageKey: string;
+};
 
 type InitialVariant = {
   options: Record<string, string>;
@@ -18,25 +24,13 @@ type InitialVariant = {
   imageKey: string | null;
 };
 
-const EMPTY: LeafFields = { price: "", stock: "0", sku: "", imageKey: "" };
-
 function uid(): string {
   return Math.random().toString(36).slice(2, 9);
 }
 
-function fieldsOf(variant: InitialVariant): LeafFields {
-  return {
-    price: variant.priceCents ? (variant.priceCents / 100).toFixed(2) : "",
-    stock: String(variant.stock),
-    sku: variant.sku ?? "",
-    imageKey: variant.imageKey ?? "",
-  };
-}
-
 /**
- * Values are nodes. Each one owns its own children, so Bone can carry three
- * sizes while Black carries two. The table shows those attachments; every leaf
- * is one purchasable combination with its own price, stock, and preview.
+ * Two steps, in the order a seller thinks: declare the groups, then match them
+ * in the table. One row is one combination you actually sell.
  */
 export function VariantFields({
   initialProperties,
@@ -46,128 +40,134 @@ export function VariantFields({
   initialVariants: InitialVariant[];
 }) {
   const [enabled, setEnabled] = useState(initialProperties.length > 0);
-  const [groupName, setGroupName] = useState(initialProperties[0]?.name ?? "Color");
-  const [childName, setChildName] = useState(initialProperties[1]?.name ?? "Size");
 
-  const [parents, setParents] = useState<Parent[]>(() => {
-    const first = initialProperties[0];
-    const second = initialProperties[1];
-    if (!first) return [];
+  const [groups, setGroups] = useState<Group[]>(() =>
+    initialProperties.map((property) => ({
+      id: uid(),
+      name: property.name,
+      values: property.values.map((value) => ({ id: uid(), name: value })),
+    })),
+  );
 
-    const byValue = new Map<string, Parent>();
-    for (const name of first.values) {
-      byValue.set(name, { id: uid(), name, ...EMPTY, children: [] });
-    }
+  const [rows, setRows] = useState<Row[]>(() =>
+    initialVariants.map((variant) => ({
+      id: uid(),
+      picks: Object.fromEntries(
+        initialProperties.map((property) => [property.name, variant.options[property.name] ?? ""]),
+      ),
+      price: variant.priceCents ? (variant.priceCents / 100).toFixed(2) : "",
+      stock: String(variant.stock),
+      sku: variant.sku ?? "",
+      imageKey: variant.imageKey ?? "",
+    })),
+  );
 
-    for (const variant of initialVariants) {
-      const parent = byValue.get(variant.options[first.name] ?? "");
-      if (!parent) continue;
-      const childValue = second ? (variant.options[second.name] ?? "") : "";
-      if (childValue) {
-        parent.children.push({ id: uid(), name: childValue, ...fieldsOf(variant) });
-      } else {
-        Object.assign(parent, fieldsOf(variant));
-      }
-    }
-
-    return [...byValue.values()];
-  });
-
-  const [draftParent, setDraftParent] = useState("");
-  const [openChildFor, setOpenChildFor] = useState<string | null>(null);
-  const [draftChild, setDraftChild] = useState("");
+  const [draftGroup, setDraftGroup] = useState("");
+  const [draftValue, setDraftValue] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
-  const patchParent = (id: string, patch: Partial<Parent>) =>
-    setParents((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  const patchRow = (id: string, patch: Partial<Row>) =>
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
 
-  const patchChild = (parentId: string, childId: string, patch: Partial<Child>) =>
-    setParents((current) =>
-      current.map((row) =>
-        row.id === parentId
-          ? {
-              ...row,
-              children: row.children.map((child) =>
-                child.id === childId ? { ...child, ...patch } : child,
-              ),
-            }
-          : row,
-      ),
-    );
-
-  function addParent() {
-    const name = draftParent.trim();
-    if (!name) return;
-    if (parents.some((row) => row.name.toLowerCase() === name.toLowerCase())) return;
-    setParents((current) => [...current, { id: uid(), name, ...EMPTY, children: [] }]);
-    setDraftParent("");
+  function addGroup() {
+    const name = draftGroup.trim();
+    if (!name || groups.length >= 3) return;
+    if (groups.some((group) => group.name.toLowerCase() === name.toLowerCase())) return;
+    setGroups((current) => [...current, { id: uid(), name, values: [] }]);
+    setDraftGroup("");
   }
 
-  function addChild(parentId: string) {
-    const name = draftChild.trim();
+  function addValue(groupId: string) {
+    const name = (draftValue[groupId] ?? "").trim();
     if (!name) return;
-    setParents((current) =>
-      current.map((row) => {
-        if (row.id !== parentId) return row;
-        if (row.children.some((child) => child.name.toLowerCase() === name.toLowerCase()))
-          return row;
-        return { ...row, children: [...row.children, { id: uid(), name, ...EMPTY }] };
+    setGroups((current) =>
+      current.map((group) => {
+        if (group.id !== groupId) return group;
+        if (group.values.some((value) => value.name.toLowerCase() === name.toLowerCase()))
+          return group;
+        return { ...group, values: [...group.values, { id: uid(), name }] };
       }),
     );
-    setDraftChild("");
+    setDraftValue((current) => ({ ...current, [groupId]: "" }));
   }
 
-  async function upload(key: string, file: File | undefined, apply: (imageKey: string) => void) {
+  function removeValue(group: Group, valueId: string) {
+    const removed = group.values.find((entry) => entry.id === valueId);
+    setGroups((current) =>
+      current.map((entry) =>
+        entry.id === group.id
+          ? { ...entry, values: entry.values.filter((item) => item.id !== valueId) }
+          : entry,
+      ),
+    );
+    if (removed)
+      setRows((current) => current.filter((row) => row.picks[group.name] !== removed.name));
+  }
+
+  function addRow() {
+    const ready = groups.filter((group) => group.values.length > 0);
+    if (ready.length === 0) return;
+
+    // Offer the first pairing that is not already in the table.
+    for (let index = 0; index < 64; index += 1) {
+      const picks: Record<string, string> = {};
+      groups.forEach((group, position) => {
+        const size = Math.max(group.values.length, 1);
+        picks[group.name] =
+          group.values[Math.floor(index / Math.pow(size, position)) % size]?.name ?? "";
+      });
+      const key = groups.map((group) => group.name + "=" + picks[group.name]).join("|");
+      const taken = rows.some(
+        (row) => groups.map((group) => group.name + "=" + row.picks[group.name]).join("|") === key,
+      );
+      if (!taken && Object.values(picks).every(Boolean)) {
+        setRows((current) => [
+          ...current,
+          { id: uid(), picks, price: "", stock: "0", sku: "", imageKey: "" },
+        ]);
+        return;
+      }
+    }
+  }
+
+  async function upload(rowId: string, file: File | undefined) {
     if (!file) return;
-    setBusy(key);
+    setBusy(rowId);
     try {
       const body = new FormData();
       body.set("file", file);
       const response = await fetch("/api/upload", { method: "POST", body });
       const payload = (await response.json()) as { key?: string };
-      if (payload.key) apply(payload.key);
+      if (payload.key) patchRow(rowId, { imageKey: payload.key });
     } finally {
       setBusy(null);
     }
   }
 
-  const childValues = [
-    ...new Set(parents.flatMap((row) => row.children.map((child) => child.name))),
-  ];
-  const group = groupName.trim() || "Option";
-  const subGroup = childName.trim() || "Size";
-
+  const active = groups.filter((group) => group.values.length > 0);
   const properties: ProductProperty[] = enabled
-    ? [
-        { name: group, values: parents.map((row) => row.name) },
-        ...(childValues.length > 0 ? [{ name: subGroup, values: childValues }] : []),
-      ]
+    ? active.map((group) => ({ name: group.name, values: group.values.map((value) => value.name) }))
     : [];
 
+  // A row may cover only some groups: "Olive" with no size is a valid combination.
   const payload = enabled
-    ? parents.flatMap((row) =>
-        row.children.length === 0
-          ? [
-              {
-                options: { [group]: row.name },
-                price: row.price,
-                stock: Number(row.stock || 0),
-                sku: row.sku,
-                imageKey: row.imageKey,
-              },
-            ]
-          : row.children.map((child) => ({
-              options: { [group]: row.name, [subGroup]: child.name },
-              price: child.price,
-              stock: Number(child.stock || 0),
-              sku: child.sku,
-              imageKey: child.imageKey || row.imageKey,
-            })),
-      )
+    ? rows
+        .filter((row) => active.some((group) => Boolean(row.picks[group.name])))
+        .map((row) => ({
+          options: Object.fromEntries(
+            active
+              .filter((group) => row.picks[group.name])
+              .map((group) => [group.name, row.picks[group.name]!]),
+          ),
+          price: row.price,
+          stock: Number(row.stock || 0),
+          sku: row.sku,
+          imageKey: row.imageKey,
+        }))
     : [];
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border px-3 py-3">
+    <div className="flex flex-col gap-4 rounded-md border border-border px-3 py-3">
       <input type="hidden" name="properties" value={JSON.stringify(properties)} />
       <input type="hidden" name="variants" value={enabled ? JSON.stringify(payload) : ""} />
 
@@ -180,287 +180,246 @@ export function VariantFields({
         <span className="flex flex-col gap-0.5">
           <span className="text-sm font-medium">This item has variations</span>
           <span className="text-xs text-muted-foreground">
-            Add values, then attach sub-values to the ones that have them. Each combination gets its
-            own price and stock.
+            Create the groups first, then match them in the table below.
           </span>
         </span>
       </label>
 
       {enabled ? (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={groupName}
-              onChange={(event) => setGroupName(event.target.value)}
-              placeholder="Variation"
-              className="h-8 w-32 rounded-md border border-border px-2 text-sm font-medium"
-            />
-            <input
-              value={draftParent}
-              onChange={(event) => setDraftParent(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addParent();
-                }
-              }}
-              placeholder="Add value, press Enter"
-              className="h-8 w-48 rounded-md border border-border px-2 text-xs"
-            />
-            <Button type="button" size="sm" variant="ghost" onClick={addParent}>
-              <Plus />
-              Add
-            </Button>
-            {childValues.length > 0 ? (
-              <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-                sub-values are
+          <section className="flex flex-col gap-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              1. Groups
+            </h4>
+
+            {groups.map((group) => (
+              <div
+                key={group.id}
+                className="flex flex-col gap-2 rounded-md border border-border p-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    value={group.name}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setGroups((current) =>
+                        current.map((entry) =>
+                          entry.id === group.id ? { ...entry, name: next } : entry,
+                        ),
+                      );
+                      setRows((current) =>
+                        current.map((row) => {
+                          const picks = { ...row.picks };
+                          const value = picks[group.name];
+                          delete picks[group.name];
+                          if (value) picks[next] = value;
+                          return { ...row, picks };
+                        }),
+                      );
+                    }}
+                    placeholder="Group name"
+                    className="h-8 w-32 rounded-md border border-border px-2 text-sm font-medium"
+                  />
+                  {groups.length > 1 ? (
+                    <button
+                      type="button"
+                      aria-label={"Remove " + group.name}
+                      onClick={() =>
+                        setGroups((current) => current.filter((entry) => entry.id !== group.id))
+                      }
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {group.values.map((value) => (
+                    <span
+                      key={value.id}
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
+                    >
+                      {value.name}
+                      <button
+                        type="button"
+                        aria-label={"Remove " + value.name}
+                        onClick={() => removeValue(group, value.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    value={draftValue[group.id] ?? ""}
+                    onChange={(event) =>
+                      setDraftValue((current) => ({ ...current, [group.id]: event.target.value }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addValue(group.id);
+                      }
+                    }}
+                    placeholder="Add value, press Enter"
+                    className="h-7 w-44 rounded-md border border-border px-2 text-xs"
+                  />
+                </div>
+              </div>
+            ))}
+
+            {groups.length < 3 ? (
+              <div className="flex items-center gap-2">
                 <input
-                  value={childName}
-                  onChange={(event) => setChildName(event.target.value)}
-                  className="h-7 w-24 rounded-md border border-border px-2 text-xs"
+                  value={draftGroup}
+                  onChange={(event) => setDraftGroup(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addGroup();
+                    }
+                  }}
+                  placeholder="New group, e.g. Color"
+                  className="h-8 w-44 rounded-md border border-border px-2 text-xs"
                 />
-              </span>
+                <Button type="button" size="sm" variant="outline" onClick={addGroup}>
+                  <Plus />
+                  Add group
+                </Button>
+              </div>
             ) : null}
-          </div>
+          </section>
 
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/40 text-left text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-2 font-medium">{group}</th>
-                  <th className="px-2 py-2 font-medium">Price</th>
-                  <th className="px-2 py-2 font-medium">Stock</th>
-                  <th className="px-2 py-2 font-medium">SKU</th>
-                  <th className="px-2 py-2 font-medium">Preview</th>
-                  <th className="w-12 px-2 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {parents.length === 0 ? (
+          <section className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                2. Combinations
+              </h4>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={addRow}
+                disabled={active.length === 0}
+              >
+                <Plus />
+                Add combination
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 text-left text-muted-foreground">
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
-                      Add a value like Bone or Black.
-                    </td>
+                    {groups.map((group) => (
+                      <th key={group.id} className="px-2 py-2 font-medium">
+                        {group.name || "Group"}
+                      </th>
+                    ))}
+                    <th className="px-2 py-2 font-medium">Price</th>
+                    <th className="px-2 py-2 font-medium">Stock</th>
+                    <th className="px-2 py-2 font-medium">SKU</th>
+                    <th className="px-2 py-2 font-medium">Preview</th>
+                    <th className="w-8 px-2 py-2" />
                   </tr>
-                ) : null}
-              </tbody>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={groups.length + 5}
+                        className="px-3 py-6 text-center text-muted-foreground"
+                      >
+                        No combinations yet. Add the pairings you actually sell.
+                      </td>
+                    </tr>
+                  ) : null}
 
-              {parents.map((row) => {
-                const hasChildren = row.children.length > 0;
-                return (
-                  <tbody key={row.id} className="border-t border-border">
-                    <tr className="bg-muted/20">
-                      <td className="px-2 py-2 font-medium">{row.name}</td>
-                      {hasChildren ? (
-                        <td className="px-2 py-2 text-muted-foreground" colSpan={3}>
-                          {row.children.length}{" "}
-                          {row.children.length === 1 ? "combination" : "combinations"}
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-t border-border">
+                      {groups.map((group) => (
+                        <td key={group.id} className="px-2 py-2">
+                          <select
+                            aria-label={group.name}
+                            value={row.picks[group.name] ?? ""}
+                            onChange={(event) =>
+                              patchRow(row.id, {
+                                picks: { ...row.picks, [group.name]: event.target.value },
+                              })
+                            }
+                            className="h-7 w-28 rounded-md border border-border bg-background px-1 text-xs"
+                          >
+                            <option value="">none</option>
+                            {group.values.map((value) => (
+                              <option key={value.id} value={value.name}>
+                                {value.name}
+                              </option>
+                            ))}
+                          </select>
                         </td>
-                      ) : (
-                        <>
-                          <td className="px-2 py-2">
-                            <Field
-                              label="Variant price"
-                              value={row.price}
-                              onChange={(v) => patchParent(row.id, { price: v })}
-                              placeholder="base"
-                              width="w-20"
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <Field
-                              label="Variant stock"
-                              value={row.stock}
-                              onChange={(v) => patchParent(row.id, { stock: v })}
-                              width="w-16"
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <Field
-                              label="Variant SKU"
-                              value={row.sku}
-                              onChange={(v) => patchParent(row.id, { sku: v })}
-                              width="w-24"
-                            />
-                          </td>
-                        </>
-                      )}
+                      ))}
+
                       <td className="px-2 py-2">
-                        <Preview
-                          value={row.imageKey}
-                          busy={busy === row.id}
-                          onPick={(file) =>
-                            void upload(row.id, file, (key) =>
-                              patchParent(row.id, { imageKey: key }),
-                            )
-                          }
-                          onClear={() => patchParent(row.id, { imageKey: "" })}
+                        <input
+                          aria-label="Variant price"
+                          value={row.price}
+                          onChange={(event) => patchRow(row.id, { price: event.target.value })}
+                          placeholder="base"
+                          className="h-7 w-20 rounded-md border border-border px-2 text-xs"
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            aria-label={"Add sub-value to " + row.name}
-                            onClick={() => {
-                              setOpenChildFor(openChildFor === row.id ? null : row.id);
-                              setDraftChild("");
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={"Remove " + row.name}
-                            onClick={() =>
-                              setParents((current) =>
-                                current.filter((entry) => entry.id !== row.id),
-                              )
-                            }
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
+                        <input
+                          aria-label="Variant stock"
+                          value={row.stock}
+                          onChange={(event) => patchRow(row.id, { stock: event.target.value })}
+                          className="h-7 w-16 rounded-md border border-border px-2 text-xs"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label="Variant SKU"
+                          value={row.sku}
+                          onChange={(event) => patchRow(row.id, { sku: event.target.value })}
+                          className="h-7 w-24 rounded-md border border-border px-2 text-xs"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <RowImage
+                          value={row.imageKey}
+                          busy={busy === row.id}
+                          onPick={(file) => void upload(row.id, file)}
+                          onClear={() => patchRow(row.id, { imageKey: "" })}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <button
+                          type="button"
+                          aria-label="Remove combination"
+                          onClick={() =>
+                            setRows((current) => current.filter((entry) => entry.id !== row.id))
+                          }
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </td>
                     </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-                    {openChildFor === row.id ? (
-                      <tr className="border-t border-border">
-                        <td className="px-2 py-2" colSpan={6}>
-                          <div className="flex items-center gap-2 pl-4">
-                            <input
-                              autoFocus
-                              value={draftChild}
-                              onChange={(event) => setDraftChild(event.target.value)}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.preventDefault();
-                                  addChild(row.id);
-                                }
-                                if (event.key === "Escape") setOpenChildFor(null);
-                              }}
-                              placeholder={subGroup + " for " + row.name + ", press Enter"}
-                              className="h-7 w-64 rounded-md border border-border px-2 text-xs"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => addChild(row.id)}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-
-                    {row.children.map((child) => (
-                      <tr key={child.id} className="border-t border-border">
-                        <td className="py-2 pl-6 pr-2 text-muted-foreground">{child.name}</td>
-                        <td className="px-2 py-2">
-                          <Field
-                            label="Variant price"
-                            value={child.price}
-                            onChange={(v) => patchChild(row.id, child.id, { price: v })}
-                            placeholder="base"
-                            width="w-20"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <Field
-                            label="Variant stock"
-                            value={child.stock}
-                            onChange={(v) => patchChild(row.id, child.id, { stock: v })}
-                            width="w-16"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <Field
-                            label="Variant SKU"
-                            value={child.sku}
-                            onChange={(v) => patchChild(row.id, child.id, { sku: v })}
-                            width="w-24"
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <Preview
-                            value={child.imageKey}
-                            busy={busy === child.id}
-                            onPick={(file) =>
-                              void upload(child.id, file, (key) =>
-                                patchChild(row.id, child.id, { imageKey: key }),
-                              )
-                            }
-                            onClear={() => patchChild(row.id, child.id, { imageKey: "" })}
-                          />
-                        </td>
-                        <td className="px-2 py-2">
-                          <button
-                            type="button"
-                            aria-label={"Remove " + child.name}
-                            onClick={() =>
-                              setParents((current) =>
-                                current.map((entry) =>
-                                  entry.id === row.id
-                                    ? {
-                                        ...entry,
-                                        children: entry.children.filter(
-                                          (item) => item.id !== child.id,
-                                        ),
-                                      }
-                                    : entry,
-                                ),
-                              )
-                            }
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                );
-              })}
-            </table>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            A row with no sub-values sells on its own. Sub-values belong to that row only, so Black
-            can offer two sizes while Bone offers three.
-          </p>
+            <p className="text-xs text-muted-foreground">
+              Add only the pairings you sell. Blank price uses the item price.
+            </p>
+          </section>
         </>
       ) : null}
     </div>
   );
 }
 
-function Field({
-  value,
-  onChange,
-  placeholder,
-  width,
-  label,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  width: string;
-  label: string;
-}) {
-  return (
-    <input
-      aria-label={label}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      className={"h-7 rounded-md border border-border px-2 text-xs " + width}
-    />
-  );
-}
-
-function Preview({
+function RowImage({
   value,
   busy,
   onPick,

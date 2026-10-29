@@ -72,29 +72,33 @@ the match is near exact.
 
 ## Item options
 
-An item can define up to three options, each with up to twenty values, but the combinations are not a
-forced cartesian product. Every value can own its own children, so `Black` can offer two sizes while
-`Bone` offers three, and a value with no children is sold on its own.
+Two steps in the item sheet.
+
+1. **Groups.** Create up to three, each with values. `Color` with Bone, Black, Olive; `Size` with
+   S and M. Free text, no fixed catalogue.
+2. **Combinations.** One row per pair you actually sell. Each row picks a value per group, then
+   carries its own price, stock, SKU, and preview image.
+
+Nothing is generated automatically, so nothing forces a full grid: `Black / M` can exist while
+`Black / S` does not, and a row can leave a group empty when that value has no second dimension
+(`Olive` alone).
 
 ```
-products.properties   [{ "name": "Color", "values": ["Bone","Black"] },
+products.properties   [{ "name": "Color", "values": ["Bone","Black","Olive"] },
                        { "name": "Size",  "values": ["S","M"] }]
-product_variants      one row per combination that actually exists:
+product_variants      one row per combination that exists:
                       { Color: "Bone", Size: "S" }  stock 3
                       { Color: "Bone", Size: "M" }  stock 4
                       { Color: "Black", Size: "M" } stock 0
+                      { Color: "Olive" }            stock 0
 ```
-
-The editor is a single table: type a value, press plus to attach sub-values to that value only, and
-give each leaf its own price, stock, SKU, and preview. A row with no children carries those fields
-itself.
 
 The variants table is what the cart, stock claiming, and orders use. `cart_items` is unique per
 (user, variant), and `order_items` stores the variant id plus a text snapshot of the chosen values,
-so renaming an option later never rewrites history.
+so renaming a group later never rewrites history.
 
 The product page prunes: choosing `Black` strikes out `S` because that combination does not exist,
-and a value with no children hides the second picker instead of showing an empty one.
+and a value with no second dimension hides the second picker instead of showing an empty one.
 
 Products without options still get exactly one variant with empty options, which keeps the cart code
 on one path. `products.stock` is a rolled-up sum for cards and filters; the variant rows are
