@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { ZoomableImage } from "@/components/image-lightbox";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Badge, Button } from "@repo/ui";
 import { formatMoney } from "@repo/shared";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { ZoomableImage } from "@/components/image-lightbox";
 import type { ProductProperty } from "@/lib/db/schema";
 
 export type DetailVariant = {
@@ -27,6 +27,8 @@ type Props = {
   properties: ProductProperty[];
   variants: DetailVariant[];
 };
+
+type Photo = { key: string; options?: Record<string, string> };
 
 export function ProductDetail({
   name,
@@ -50,39 +52,28 @@ export function ProductDetail({
   });
   const [thumb, setThumb] = useState(0);
 
-  /** Picking a value can invalidate the others, so move them to a real combination. */
-  function choose(propertyName: string, value: string) {
-    setChosen((current) => {
-      const next = { ...current, [propertyName]: value };
-      for (const property of properties) {
-        if (property.name === propertyName) continue;
-        const stillValid = variants.some(
-          (variant) =>
-            variant.options[propertyName] === value &&
-            variant.options[property.name] === next[property.name],
-        );
-        if (stillValid) continue;
-        const fallback = variants.find(
-          (variant) => variant.options[propertyName] === value && variant.options[property.name],
-        );
-        if (fallback) next[property.name] = fallback.options[property.name]!;
-      }
-      return next;
-    });
-    setThumb(0);
+  // Every product photo, then one thumbnail per variant image.
+  const gallery: Photo[] = [];
+  const seen = new Set<string>();
+  for (const key of images) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    gallery.push({ key });
   }
+  for (const variant of variants) {
+    if (!variant.imageKey || seen.has(variant.imageKey)) continue;
+    seen.add(variant.imageKey);
+    gallery.push({ key: variant.imageKey, options: variant.options });
+  }
+  if (gallery.length === 0) gallery.push({ key: "" });
 
-  // A variant may define fewer options than the item does, so it matches when
-  // everything it defines agrees with the current choice.
-  const selected = useMemo(
-    () =>
-      variants.find((variant) =>
-        Object.entries(variant.options).every(([name, value]) => chosen[name] === value),
-      ),
-    [variants, chosen],
-  );
+  const current = gallery[thumb]?.key ?? gallery[0]?.key ?? "";
 
-  // If the chosen first value has no sub-values, the second picker is noise.
+  const matches = (variant: DetailVariant) =>
+    Object.entries(variant.options).every(([name, value]) => chosen[name] === value);
+
+  const selected = variants.find(matches);
+
   const firstProperty = properties[0];
   const siblings = firstProperty
     ? variants.filter(
@@ -105,11 +96,37 @@ export function ProductDetail({
     );
   };
 
-  const gallery = selected?.imageKey
-    ? [selected.imageKey, ...images.filter((key) => key !== selected.imageKey)]
-    : images;
+  /** Show the photo that belongs to the combination, else the default. */
+  function focusVariant(variant: DetailVariant | undefined) {
+    if (!variant?.imageKey) {
+      setThumb(0);
+      return;
+    }
+    const index = gallery.findIndex((photo) => photo.key === variant.imageKey);
+    setThumb(index >= 0 ? index : 0);
+  }
 
-  const current = gallery[thumb] ?? gallery[0];
+  function choose(propertyName: string, value: string) {
+    const next = { ...chosen, [propertyName]: value };
+    for (const property of properties) {
+      if (property.name === propertyName) continue;
+      const stillValid = variants.some(
+        (variant) =>
+          variant.options[propertyName] === value &&
+          variant.options[property.name] === next[property.name],
+      );
+      if (stillValid) continue;
+      const fallback = variants.find(
+        (variant) => variant.options[propertyName] === value && variant.options[property.name],
+      );
+      if (fallback) next[property.name] = fallback.options[property.name]!;
+    }
+    setChosen(next);
+    focusVariant(
+      variants.find((variant) => Object.entries(variant.options).every(([n, v]) => next[n] === v)),
+    );
+  }
+
   const prices = variants.map((variant) => variant.priceCents ?? basePriceCents);
   const lowest = Math.min(...prices);
   const highest = Math.max(...prices);
@@ -124,7 +141,8 @@ export function ProductDetail({
       <div className="flex flex-col gap-3">
         {current ? (
           <ZoomableImage
-            images={gallery}
+            src={current}
+            images={gallery.map((photo) => photo.key)}
             initialIndex={thumb}
             alt={name}
             width={1200}
@@ -141,12 +159,19 @@ export function ProductDetail({
 
         {gallery.length > 1 ? (
           <ul className="flex flex-wrap gap-2">
-            {gallery.map((key, index) => (
-              <li key={key}>
+            {gallery.map((photo, index) => (
+              <li key={photo.key}>
                 <button
                   type="button"
-                  onClick={() => setThumb(index)}
-                  aria-label={"Show preview " + (index + 1)}
+                  onClick={() => {
+                    setThumb(index);
+                    if (photo.options) setChosen(photo.options);
+                  }}
+                  aria-label={
+                    photo.options
+                      ? "View " + Object.values(photo.options).join(" ")
+                      : "View image " + (index + 1)
+                  }
                   aria-current={index === thumb}
                   className={
                     "block overflow-hidden rounded-md border transition-colors " +
@@ -156,7 +181,7 @@ export function ProductDetail({
                   }
                 >
                   <Image
-                    src={key}
+                    src={photo.key}
                     alt=""
                     width={64}
                     height={64}

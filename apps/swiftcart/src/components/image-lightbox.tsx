@@ -14,6 +14,7 @@ const clampZoom = (value: number) => Math.min(Math.max(value, 1), 4);
  * going back to 1x always returns to the fitted view.
  */
 export function ZoomableImage({
+  src,
   images,
   initialIndex,
   alt,
@@ -23,6 +24,7 @@ export function ZoomableImage({
   priority,
   className,
 }: {
+  src: string;
   images: string[];
   initialIndex: number;
   alt: string;
@@ -38,7 +40,7 @@ export function ZoomableImage({
   const drag = useRef<{ x: number; y: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
-  const current = images[index] ?? images[0];
+  const current = images[index] ?? src;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -119,7 +121,7 @@ export function ZoomableImage({
         className="group relative block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border"
       >
         <Image
-          src={current}
+          src={src}
           alt={alt}
           width={width}
           height={height}
