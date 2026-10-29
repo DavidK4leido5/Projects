@@ -1,25 +1,27 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 // Every route reads the session, so nothing is prerendered at build time.
 export const dynamic = "force-dynamic";
 
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+
 export const metadata: Metadata = {
   title: { default: "SwiftCart", template: "%s | SwiftCart" },
-  description: "A storefront where independent stores list what they sell.",
+  description: "A marketplace where independent stores list what they sell.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh bg-neutral-50 text-neutral-900 antialiased">
+    <html lang="en" className={inter.variable}>
+      <body className="flex min-h-dvh flex-col bg-neutral-50 font-sans text-neutral-900 antialiased">
         <SiteHeader />
-        {children}
-        <footer className="mx-auto max-w-5xl px-4 py-10 text-xs text-neutral-500">
-          SwiftCart demo. No payments are taken. Orders are recorded, not fulfilled by a carrier.
-        </footer>
+        <div className="flex-1">{children}</div>
+        <SiteFooter />
       </body>
     </html>
   );

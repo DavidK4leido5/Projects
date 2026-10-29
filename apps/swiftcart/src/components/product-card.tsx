@@ -3,34 +3,60 @@ import { formatMoney } from "@repo/shared";
 import type { ProductCardModel } from "@/features/catalog/queries";
 
 export function ProductCard({ product }: { product: ProductCardModel }) {
-  const productHref = `/products/${product.slug}`;
+  const soldOut = product.stock === 0;
 
   return (
-    <article className="overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300">
-      <Link href={productHref} className="block">
+    <article className="group flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300">
+      <Link href={"/products/" + product.slug} className="relative block bg-neutral-100">
         {product.imageKey ? (
           <img
-            src={`/api/images/${product.imageKey}`}
+            src={"/api/images/" + product.imageKey}
             alt={product.name}
-            className="aspect-[4/3] w-full object-cover"
+            className="aspect-square w-full object-cover"
           />
         ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center bg-neutral-100 text-2xl text-neutral-400">
+          <div className="flex aspect-square w-full items-center justify-center text-3xl text-neutral-300">
             {product.name.charAt(0)}
           </div>
         )}
-        <div className="flex items-baseline justify-between gap-3 p-4">
-          <h3 className="text-sm font-semibold tracking-tight">{product.name}</h3>
-          <span className="text-sm text-neutral-600">{formatMoney(product.priceCents)}</span>
-        </div>
-        {product.stock === 0 ? <p className="px-4 pb-1 text-xs text-red-600">Sold out</p> : null}
+        {soldOut ? (
+          <span className="absolute left-2 top-2 rounded bg-white/95 px-2 py-1 text-[11px] font-medium text-neutral-700">
+            Sold out
+          </span>
+        ) : null}
       </Link>
-      <div className="px-4 pb-4 text-xs text-neutral-500">
+
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
         <Link
-          href={`/stores/${product.storeSlug}`}
-          className="transition-colors hover:text-neutral-900"
+          href={"/products/" + product.slug}
+          className="truncate text-sm font-medium tracking-tight text-neutral-900 underline-offset-4 hover:underline"
+        >
+          {product.name}
+        </Link>
+        {product.description ? (
+          <p className="line-clamp-2 text-xs leading-5 text-neutral-600">{product.description}</p>
+        ) : null}
+        <Link
+          href={"/stores/" + product.storeSlug}
+          className="truncate text-xs text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline"
         >
           {product.storeName}
+        </Link>
+
+        <div className="mt-auto flex items-baseline justify-between gap-2 pt-2">
+          <span className="text-sm font-semibold tabular-nums">
+            {formatMoney(product.priceCents)}
+          </span>
+          <span className="text-[11px] tabular-nums text-neutral-500">
+            {soldOut ? "0 left" : product.stock + " left"}
+          </span>
+        </div>
+
+        <Link
+          href={"/products/" + product.slug}
+          className="mt-2 inline-flex items-center justify-center rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-800 transition-colors group-hover:border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white"
+        >
+          View product
         </Link>
       </div>
     </article>

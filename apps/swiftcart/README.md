@@ -16,6 +16,17 @@ One account, one role.
 | `store` | CRUD the products of the one store it owns        | `/dashboard` |
 | `user`  | Browse, and keep a cart tied to the account       | `/`          |
 
+## The catalogue
+
+The landing page is a browse surface, not a poster: a two row header with search, a breadcrumb, a
+filter bar, a four column grid, and pagination. Every control is a real query parameter handled in
+`searchProducts` (`src/features/catalog/queries.ts`): free text across product and store names, a
+store filter, in-stock only, and price or recency sort. Filters compose, so `?q=stoneware&store=atlas-ceramics&sort=price-asc`
+is one query.
+
+The rail below the grid only renders when nothing is filtered, because showing unrelated products
+under a search result is worse than showing none.
+
 ## Layers
 
 ```

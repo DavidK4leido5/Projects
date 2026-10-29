@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { products, stores } from "@/lib/db/schema";
 
@@ -20,6 +20,15 @@ const productColumns = {
 
 export type ProductCardModel = Awaited<ReturnType<typeof listProducts>>[number];
 
+export type CatalogFilters = {
+  q?: string;
+  store?: string;
+  sort?: "new" | "price-asc" | "price-desc";
+  inStock?: boolean;
+  page?: number;
+  perPage?: number;
+};
+
 export async function listProducts(limit = 24) {
   return getDb()
     .select(productColumns)
@@ -27,6 +36,67 @@ export async function listProducts(limit = 24) {
     .innerJoin(stores, eq(products.storeId, stores.id))
     .orderBy(desc(products.createdAt))
     .limit(limit);
+}
+
+export async function searchProducts(filters: CatalogFilters) {
+  const perPage = Math.min(Math.max(filters.perPage ?? 12, 1), 48);
+  const page = Math.max(filters.page ?? 1, 1);
+
+  const conditions = [];
+  const term = filters.q?.trim();
+  if (term) {
+    const pattern = "%" + term + "%";
+    conditions.push(
+      or(
+        ilike(products.name, pattern),
+        ilike(products.description, pattern),
+        ilike(stores.name, pattern),
+      ),
+    );
+  }
+  if (filters.store) conditions.push(eq(stores.slug, filters.store));
+  if (filters.inStock) conditions.push(gt(products.stock, 0));
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const orderBy =
+    filters.sort === "price-asc"
+      ? asc(products.priceCents)
+      : filters.sort === "price-desc"
+        ? desc(products.priceCents)
+        : desc(products.createdAt);
+
+  const counted = await getDb()
+    .select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(where);
+
+  const total = counted[0]?.total ?? 0;
+
+  const items = await getDb()
+    .select(productColumns)
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(where)
+    .orderBy(orderBy)
+    .limit(perPage)
+    .offset((page - 1) * perPage);
+
+  return { items, total, page, perPage, pages: Math.max(1, Math.ceil(total / perPage)) };
+}
+
+export async function listStoreFacets() {
+  return getDb()
+    .select({
+      slug: stores.slug,
+      name: stores.name,
+      productCount: sql<number>`count(${products.id})`.mapWith(Number),
+    })
+    .from(stores)
+    .leftJoin(products, eq(products.storeId, stores.id))
+    .groupBy(stores.slug, stores.name)
+    .orderBy(asc(stores.name));
 }
 
 export async function getProductBySlug(slug: string) {
