@@ -1,16 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 
 /**
- * Product photo with a full-screen viewer. The page image stays put; clicking it
- * opens the lightbox, where click or the zoom buttons change magnification and
- * the wheel does the same.
+ * Product photo plus a full-screen viewer. The viewer never scrolls: the image
+ * is contained in the viewport, the wheel changes magnification, dragging pans
+ * when zoomed, and the strip underneath switches images.
  */
 export function ZoomableImage({
-  src,
+  images,
+  initialIndex,
   alt,
   width,
   height,
@@ -18,7 +19,8 @@ export function ZoomableImage({
   priority,
   className,
 }: {
-  src: string;
+  images: string[];
+  initialIndex: number;
   alt: string;
   width: number;
   height: number;
@@ -27,11 +29,19 @@ export function ZoomableImage({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [index, setIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  const current = images[index] ?? images[0];
+  const clamp = (value: number) => Math.min(Math.max(value, 1), 4);
 
   const close = useCallback(() => {
     setOpen(false);
     setZoom(1);
+    setOffset({ x: 0, y: 0 });
   }, []);
 
   useEffect(() => {
@@ -41,8 +51,8 @@ export function ZoomableImage({
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") close();
-      if (event.key === "+") setZoom((value) => Math.min(value + 0.5, 4));
-      if (event.key === "-") setZoom((value) => Math.max(value - 0.5, 1));
+      if (event.key === "+") setZoom((value) => clamp(value + 0.5));
+      if (event.key === "-") setZoom((value) => clamp(value - 0.5));
     }
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -51,16 +61,33 @@ export function ZoomableImage({
     };
   }, [open, close]);
 
+  // Wheel zooms instead of scrolling, so the stage never moves.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!open || !stage) return;
+    function onWheel(event: WheelEvent) {
+      event.preventDefault();
+      setZoom((value) => clamp(value + (event.deltaY < 0 ? 0.25 : -0.25)));
+    }
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, [open]);
+
+  if (!current) return null;
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setIndex(initialIndex);
+          setOpen(true);
+        }}
         aria-label={"Open " + alt + " larger"}
         className="group relative block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border"
       >
         <Image
-          src={src}
+          src={current}
           alt={alt}
           width={width}
           height={height}
@@ -78,20 +105,15 @@ export function ZoomableImage({
           role="dialog"
           aria-modal="true"
           aria-label={alt}
-          className="fixed inset-0 z-50 flex flex-col bg-neutral-950"
-          onClick={close}
-          onWheel={(event) => {
-            event.preventDefault();
-            setZoom((value) => Math.min(Math.max(value + (event.deltaY < 0 ? 0.25 : -0.25), 1), 4));
-          }}
+          className="fixed inset-0 z-50 flex h-dvh w-screen flex-col bg-neutral-950"
         >
-          <div className="flex items-center justify-between px-4 py-3 text-white">
+          <div className="flex shrink-0 items-center justify-between px-4 py-2 text-white">
             <span className="text-xs text-white/70">{alt}</span>
-            <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 aria-label="Zoom out"
-                onClick={() => setZoom((value) => Math.max(value - 0.5, 1))}
+                onClick={() => setZoom((value) => clamp(value - 0.5))}
                 className="rounded-full border border-white/20 p-2 hover:bg-white/10"
               >
                 <Minus className="h-4 w-4" />
@@ -102,7 +124,7 @@ export function ZoomableImage({
               <button
                 type="button"
                 aria-label="Zoom in"
-                onClick={() => setZoom((value) => Math.min(value + 0.5, 4))}
+                onClick={() => setZoom((value) => clamp(value + 0.5))}
                 className="rounded-full border border-white/20 p-2 hover:bg-white/10"
               >
                 <Plus className="h-4 w-4" />
@@ -118,22 +140,67 @@ export function ZoomableImage({
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto p-4">
-            <div
-              className="mx-auto"
-              style={{ width: zoom * 100 + "%", maxWidth: zoom === 1 ? "100%" : "none" }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Image
-                src={src}
-                alt={alt}
-                width={width * 2}
-                height={height * 2}
-                sizes="100vw"
-                className="h-auto w-full rounded-md object-contain"
-              />
-            </div>
+          <div
+            ref={stageRef}
+            className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2"
+            onPointerDown={(event) => {
+              if (zoom === 1) return;
+              drag.current = { x: event.clientX - offset.x, y: event.clientY - offset.y };
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!drag.current) return;
+              setOffset({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
+            }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+          >
+            <Image
+              src={current}
+              alt={alt}
+              width={width * 2}
+              height={height * 2}
+              sizes="100vw"
+              draggable={false}
+              style={{
+                transform: "translate(" + offset.x + "px, " + offset.y + "px) scale(" + zoom + ")",
+              }}
+              className="max-h-full max-w-full select-none object-contain transition-transform duration-150"
+            />
           </div>
+
+          {images.length > 1 ? (
+            <div className="flex shrink-0 items-center justify-center gap-2 px-4 py-3">
+              {images.map((key, position) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-label={"View image " + (position + 1)}
+                  aria-current={position === index}
+                  onClick={() => {
+                    setIndex(position);
+                    setZoom(1);
+                    setOffset({ x: 0, y: 0 });
+                  }}
+                  className={
+                    "h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-colors " +
+                    (position === index
+                      ? "border-white"
+                      : "border-transparent opacity-60 hover:opacity-100")
+                  }
+                >
+                  <Image
+                    src={key}
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </>

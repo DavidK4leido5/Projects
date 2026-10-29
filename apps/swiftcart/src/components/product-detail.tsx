@@ -124,7 +124,8 @@ export function ProductDetail({
       <div className="flex flex-col gap-3">
         {current ? (
           <ZoomableImage
-            src={current}
+            images={gallery}
+            initialIndex={thumb}
             alt={name}
             width={1200}
             height={900}
@@ -206,6 +207,11 @@ export function ProductDetail({
                     ),
                 );
 
+                // The primary variation is the top-level choice and always stays
+                // selectable; only sub-values can be missing for it.
+                const primary = property.name === properties[0]?.name;
+                const muted = !available && !primary;
+
                 return (
                   <button
                     key={value}
@@ -216,9 +222,9 @@ export function ProductDetail({
                       "rounded-md border px-3 py-1.5 text-xs transition-colors " +
                       (isChosen
                         ? "border-foreground bg-foreground text-background"
-                        : available
-                          ? "border-border hover:border-muted-foreground"
-                          : "border-border/60 text-muted-foreground line-through")
+                        : muted
+                          ? "border-border/60 text-muted-foreground line-through"
+                          : "border-border hover:border-muted-foreground")
                     }
                   >
                     {value}
