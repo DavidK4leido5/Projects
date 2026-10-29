@@ -37,11 +37,11 @@ Each item carries up to ten previews in `product_images`, ordered, with the firs
 go through `/api/upload`, so every preview lands in object storage and Cloudinary. Removing a preview,
 or deleting the item, removes the objects from both stores rather than orphaning them.
 
-Featuring an item requires two art-directed banners: 16:9 for desktop and 9:16 for mobile, both
-mandatory. The hero renders a `<picture>` whose `(min-width: 640px)` source is the wide banner and
-whose `<img>` is the tall one, so phones get the vertical crop and desktops the horizontal one. The
-ratio is checked in the browser before upload; the action refuses a featured item missing either
-banner.
+Featuring an item requires two art-directed banners: 5:2 (2500x1000) for desktop and 9:16
+(1080x1920) for mobile, both mandatory. The ratios are derived from the display: the desktop hero band
+is `clamp(300px,40vw,560px)` tall, which is 2.5:1 across ordinary desktop widths, so 5:2 art fills it
+without cropping. The ratio is checked in the browser before upload; the action refuses a featured item
+missing either banner.
 
 ## Images
 
@@ -52,10 +52,10 @@ device and the Next optimizer never touches the bytes. Without `NEXT_PUBLIC_CLOU
 the loader returns the app's own `/api/images/<key>` route instead, which keeps local work possible.
 
 The hero is art-directed with `getImageProps` rather than two `<Image>` elements, because a
-`<picture>` needs different `srcset`s per media query without shipping both files. The frame takes the
-banner's own ratio: full width and 9:16 on phones, a centred 16:9 stage capped at
-`clamp(300px,40vw,560px)` tall on desktop. Nothing is cropped, and a blurred copy of the active
-banner fills the bands beside the stage.
+`<picture>` needs different `srcset`s per media query without shipping both files. It is full bleed:
+9:16 and full width on phones, `clamp(300px,40vw,560px)` tall from `sm` up. On very wide screens the
+band gets wider than 5:2, so the sides of a 5:2 banner are cropped slightly; below about 1400px wide
+the match is near exact.
 
 ## Rendering and caching
 

@@ -70,7 +70,7 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
   if (images.length > MAX_IMAGES)
     return { error: "A product can have at most " + MAX_IMAGES + " previews." };
   if (featured && (!bannerWide || !bannerTall)) {
-    return { error: "Hero banners are required: one 16:9 for desktop and one 9:16 for mobile." };
+    return { error: "Hero banners are required: one 5:2 for desktop and one 9:16 for mobile." };
   }
 
   return { name, description, priceCents, stock, featured, images, bannerWide, bannerTall };

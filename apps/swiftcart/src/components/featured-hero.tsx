@@ -47,18 +47,18 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Featured products"
-      className="relative bg-neutral-950 py-0 sm:py-6"
+      className="relative overflow-hidden bg-neutral-950"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
       {/*
-        A 16:9 banner at full width would be far taller than the page wants, and any
-        shorter full-bleed frame crops the artwork. The stage therefore keeps the
-        banner's own ratio and sits on the content grid as a deliberate card.
+        Full bleed. The desktop frame is ~2.5:1 through the usual desktop widths,
+        which is why the required banner is 5:2 rather than 16:9: the artwork is
+        authored for the band instead of being cropped into it.
       */}
-      <div className="relative mx-auto aspect-[9/16] w-full overflow-hidden sm:aspect-video sm:max-w-5xl sm:rounded-xl sm:ring-1 sm:ring-white/10">
+      <div className="relative h-[min(78vh,640px)] w-full sm:h-[clamp(300px,40vw,560px)]">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (

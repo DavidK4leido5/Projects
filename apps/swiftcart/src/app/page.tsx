@@ -17,8 +17,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Cat
     const wide = getImageProps({
       src: item.bannerWideKey,
       alt: item.name,
-      width: 1920,
-      height: 1080,
+      width: 2500,
+      height: 1000,
       sizes: "100vw",
     }).props;
 

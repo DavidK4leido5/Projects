@@ -11,9 +11,9 @@ const SLOTS: { slot: Slot; label: string; ratio: number; hint: string; frame: st
   {
     slot: "wide",
     label: "Desktop banner",
-    ratio: 16 / 9,
-    hint: "16:9, 1920x1080 recommended",
-    frame: "aspect-video",
+    ratio: 5 / 2,
+    hint: "5:2, 2500x1000 recommended",
+    frame: "aspect-[5/2]",
   },
   {
     slot: "tall",
