@@ -14,6 +14,12 @@ const COPY: Record<Mode, { submit: string; busy: string }> = {
   "signup-store": { submit: "Open store", busy: "Creating store..." },
 };
 
+function messageOf(thrown: unknown, fallback: string): string {
+  if (thrown instanceof Error && thrown.message) return thrown.message;
+  const shaped = thrown as { message?: string; error?: { message?: string } } | null;
+  return shaped?.message ?? shaped?.error?.message ?? fallback;
+}
+
 const inputClass =
   "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none";
 
@@ -49,33 +55,35 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
     setPending(true);
 
-    if (isSignin) {
-      const result = await authClient.signIn.email({ email, password });
-      if (result.error) {
-        setError(result.error.message ?? "Email or password is incorrect.");
-        setPending(false);
-        return;
-      }
-    } else {
-      const name = isStore ? storeName : displayName;
-      const result = await authClient.signUp.email({ email, password, name });
-      if (result.error) {
-        setError(result.error.message ?? "Could not create the account.");
-        setPending(false);
-        return;
+    // The hosted client can either return or throw for the same failure, so both
+    // paths land on the same inline message instead of a runtime error overlay.
+    try {
+      if (isSignin) {
+        const result = await authClient.signIn.email({ email, password });
+        if (result.error) throw result.error;
+      } else {
+        const name = isStore ? storeName : displayName;
+        const result = await authClient.signUp.email({ email, password, name });
+        if (result.error) throw result.error;
+
+        const provisioned = await provisionAccount({ mode: isStore ? "store" : "user", storeName });
+        if (!provisioned.ok) {
+          await authClient.signOut();
+          throw new Error(provisioned.error);
+        }
       }
 
-      const provisioned = await provisionAccount({ mode: isStore ? "store" : "user", storeName });
-      if (!provisioned.ok) {
-        await authClient.signOut();
-        setError(provisioned.error);
-        setPending(false);
-        return;
-      }
+      router.push("/continue");
+      router.refresh();
+    } catch (thrown) {
+      setError(
+        messageOf(
+          thrown,
+          isSignin ? "Email or password is incorrect." : "Could not create the account.",
+        ),
+      );
+      setPending(false);
     }
-
-    router.push("/continue");
-    router.refresh();
   }
 
   return (
