@@ -1,8 +1,22 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { CatalogSearch } from "@/components/catalog-search";
 import { SessionNav } from "@/components/session-nav";
 import { SessionNavSkeleton } from "@/components/skeletons";
 import { listStoreFacets } from "@/features/catalog/queries";
+
+/** Same box at the same size, so the header does not shift when the input hydrates. */
+function SearchFallback({ variant }: { variant: "desktop" | "mobile" }) {
+  return (
+    <div
+      className={
+        variant === "desktop" ? "relative hidden flex-1 md:block" : "mx-auto max-w-6xl px-4 py-2"
+      }
+    >
+      <div className="h-[38px] w-full animate-pulse rounded-full border border-neutral-200 bg-neutral-100" />
+    </div>
+  );
+}
 
 /**
  * Static shell. The only cookie-bound part is SessionNav, suspended so the rest
@@ -18,26 +32,9 @@ export async function SiteHeader() {
           SwiftCart
         </Link>
 
-        <form action="/" role="search" className="relative hidden flex-1 md:block">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-              <path
-                d="m16 16 4.5 4.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <input
-            name="q"
-            type="search"
-            placeholder="Search products or stores"
-            aria-label="Search products or stores"
-            className="w-full rounded-full border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
-          />
-        </form>
+        <Suspense fallback={<SearchFallback variant="desktop" />}>
+          <CatalogSearch variant="desktop" />
+        </Suspense>
 
         <Suspense fallback={<SessionNavSkeleton />}>
           <SessionNav />
@@ -45,15 +42,9 @@ export async function SiteHeader() {
       </div>
 
       <div className="border-t border-neutral-100 md:hidden">
-        <form action="/" role="search" className="mx-auto max-w-6xl px-4 py-2">
-          <input
-            name="q"
-            type="search"
-            placeholder="Search products or stores"
-            aria-label="Search products or stores"
-            className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white"
-          />
-        </form>
+        <Suspense fallback={<SearchFallback variant="mobile" />}>
+          <CatalogSearch variant="mobile" />
+        </Suspense>
       </div>
 
       <div className="border-t border-neutral-100">

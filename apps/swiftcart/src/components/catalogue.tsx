@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Button, Card, CardTitle } from "@repo/ui";
+import { CatalogFilters } from "@/components/catalog-filters";
+import { CatalogPagination } from "@/components/catalog-pagination";
 import { ProductCard } from "@/components/product-card";
 import { listStoreFacets, searchProducts } from "@/features/catalog/queries";
 
@@ -10,24 +12,6 @@ export type CatalogueSearch = {
   stock?: string;
   page?: string;
 };
-
-const SORTS = [
-  { value: "new", label: "Newest" },
-  { value: "price-asc", label: "Price low to high" },
-  { value: "price-desc", label: "Price high to low" },
-];
-
-function href(params: CatalogueSearch, overrides: Partial<CatalogueSearch>): string {
-  const merged = { ...params, ...overrides };
-  const search = new URLSearchParams();
-  if (merged.q) search.set("q", merged.q);
-  if (merged.store) search.set("store", merged.store);
-  if (merged.sort && merged.sort !== "new") search.set("sort", merged.sort);
-  if (merged.stock === "in") search.set("stock", "in");
-  if (merged.page && merged.page !== "1") search.set("page", merged.page);
-  const query = search.toString();
-  return query ? "/?" + query : "/";
-}
 
 /**
  * Reads searchParams, so it is always rendered inside a Suspense boundary. The
@@ -80,74 +64,13 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
         </Link>
       </div>
 
-      <form
-        action="/"
-        className="mt-4 flex flex-wrap items-center gap-2 border-b border-neutral-200 pb-4"
-      >
-        {q ? <input type="hidden" name="q" value={q} /> : null}
-
-        <label className="flex items-center gap-2 text-xs text-neutral-600">
-          Store
-          <select
-            name="store"
-            defaultValue={store}
-            className="rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-900"
-          >
-            <option value="">All stores</option>
-            {facets.map((facet) => (
-              <option key={facet.slug} value={facet.slug}>
-                {facet.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2 text-xs text-neutral-600">
-          Sort
-          <select
-            name="sort"
-            defaultValue={sort}
-            className="rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-900"
-          >
-            {SORTS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2 text-xs text-neutral-600">
-          <input
-            type="checkbox"
-            name="stock"
-            value="in"
-            defaultChecked={inStock}
-            className="h-3.5 w-3.5 rounded border-neutral-300"
-          />
-          In stock only
-        </label>
-
-        <Button type="submit" variant="secondary" className="px-3 py-1.5 text-xs">
-          Apply
-        </Button>
-
-        {filtered ? (
-          <Link
-            href="/"
-            className="text-xs text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline"
-          >
-            Clear
-          </Link>
-        ) : null}
-
-        <span className="ml-auto text-xs tabular-nums text-neutral-500">
-          Page {catalog.page} of {catalog.pages}
-        </span>
-      </form>
+      <CatalogFilters
+        stores={facets.map((facet) => ({ slug: facet.slug, name: facet.name }))}
+        filtered={filtered}
+      />
 
       {catalog.items.length === 0 ? (
-        <Card className="mt-8 flex flex-col items-start gap-3">
+        <Card id="catalogue-results" className="mt-8 flex scroll-mt-24 flex-col items-start gap-3">
           <CardTitle>Nothing matched</CardTitle>
           <p className="text-sm text-neutral-600">
             Try a different search term, or clear the filters to see the whole catalogue.
@@ -157,58 +80,17 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
           </Link>
         </Card>
       ) : (
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div
+          id="catalogue-results"
+          className="mt-6 grid scroll-mt-24 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+        >
           {catalog.items.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       )}
 
-      {catalog.pages > 1 ? (
-        <nav
-          aria-label="Pagination"
-          className="mt-8 flex items-center justify-between gap-3 border-t border-neutral-200 pt-5"
-        >
-          {catalog.page > 1 ? (
-            <Link
-              href={href(params, { page: String(catalog.page - 1) })}
-              className="rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium transition-colors hover:border-neutral-900"
-            >
-              Previous
-            </Link>
-          ) : (
-            <span />
-          )}
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: catalog.pages }, (_, index) => index + 1).map((number) => (
-              <Link
-                key={number}
-                href={href(params, { page: String(number) })}
-                aria-current={number === catalog.page ? "page" : undefined}
-                className={
-                  number === catalog.page
-                    ? "rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
-                    : "rounded-md px-3 py-1.5 text-xs text-neutral-600 transition-colors hover:bg-neutral-100"
-                }
-              >
-                {number}
-              </Link>
-            ))}
-          </div>
-
-          {catalog.page < catalog.pages ? (
-            <Link
-              href={href(params, { page: String(catalog.page + 1) })}
-              className="rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium transition-colors hover:border-neutral-900"
-            >
-              Next
-            </Link>
-          ) : (
-            <span />
-          )}
-        </nav>
-      ) : null}
+      {catalog.pages > 1 ? <CatalogPagination page={catalog.page} pages={catalog.pages} /> : null}
 
       {!filtered && rail.length > 0 ? (
         <section className="mt-14">
