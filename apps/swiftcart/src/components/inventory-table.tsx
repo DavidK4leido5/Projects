@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import {
   Button,
   Input,
@@ -15,6 +15,7 @@ import {
 import { ResultsRegion } from "@/components/results-region";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { updateVariantStock } from "@/features/store/inventory-actions";
+import { beginPending, endPending } from "@/lib/navigation-pending";
 import type { StoreItem, StoreVariant } from "@/features/products/queries";
 import type { VariantOptions } from "@/lib/db/schema";
 
@@ -50,6 +51,16 @@ function clearKey(state: Record<string, string>, key: string): Record<string, st
 
 export function InventoryTable({ items }: { items: StoreItem[] }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // The URL is the source of truth for the filter, like every other list.
+  const rawFilter = searchParams.get("filter");
+  const urlFilter: Filter = rawFilter === "low" || rawFilter === "out" ? rawFilter : "all";
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    endPending();
+  }, [paramsKey]);
 
   const baseStocks: Record<string, number> = {};
   for (const item of items) {
@@ -65,10 +76,25 @@ export function InventoryTable({ items }: { items: StoreItem[] }) {
   );
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<Filter>("all");
+  // The pressed button follows the click; the URL settles it when it lands.
+  const [filter, setFilter] = useOptimistic<Filter>(urlFilter);
   const [pending, start] = useTransition();
 
   const stockOf = (variant: StoreVariant) => stocks[variant.id] ?? variant.stock;
+
+  function chooseFilter(next: Filter) {
+    if (next === filter) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "all") params.delete("filter");
+    else params.set("filter", next);
+    const query = params.toString();
+    const href = query ? pathname + "?" + query : pathname;
+    start(() => {
+      setFilter(next);
+      beginPending();
+      router.push(href, { scroll: false });
+    });
+  }
 
   function commit(variant: StoreVariant, raw: string) {
     const current = stockOf(variant);
@@ -113,7 +139,7 @@ export function InventoryTable({ items }: { items: StoreItem[] }) {
             size="sm"
             variant={filter === option.value ? "secondary" : "ghost"}
             aria-pressed={filter === option.value}
-            onClick={() => setFilter(option.value)}
+            onClick={() => chooseFilter(option.value)}
           >
             {option.label}
           </Button>

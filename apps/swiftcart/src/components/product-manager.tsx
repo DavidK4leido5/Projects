@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -32,6 +32,7 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { createProduct, deleteProduct, updateProduct } from "@/features/products/actions";
 import type { ProductListItem, ProductScope } from "@/features/products/queries";
+import { beginPending, endPending } from "@/lib/navigation-pending";
 import type { ProductProperty, VariantOptions } from "@/lib/db/schema";
 
 const SORT_OPTIONS = [
@@ -148,6 +149,11 @@ export function ProductManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // The URL landing is the end signal for every toolbar navigation.
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    endPending();
+  }, [paramsKey]);
   const [rows, apply] = useOptimistic(items, reducer);
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"closed" | "create" | "edit">("closed");
@@ -176,6 +182,7 @@ export function ProductManager({
     const query = next.toString();
     const href = query ? pathname + "?" + query : pathname;
     start(() => {
+      beginPending();
       if (method === "replace") router.replace(href, { scroll: false });
       else router.push(href, { scroll: false });
     });

@@ -1,15 +1,9 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-  type ChangeEvent,
-  type KeyboardEvent,
-} from "react";
-import { CATALOGUE_PATH, catalogueHref, readCatalogueParams } from "@/lib/search-params";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { CATALOGUE_PATH, readCatalogueParams } from "@/lib/search-params";
+import { useOptimisticParams } from "@/lib/use-optimistic-params";
 
 const DEBOUNCE_MS = 300;
 
@@ -55,13 +49,12 @@ function useDebounced(onSettle: (value: string) => void, delay: number) {
  * types, so results streaming in never remount it or move the caret.
  */
 export function CatalogSearch({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q") ?? "";
+  const { navigate, pending } = useOptimisticParams();
 
   const [value, setValue] = useState(urlQuery);
-  const [pending, startTransition] = useTransition();
   const typing = useRef(false);
 
   // The URL wins unless the shopper is typing. Once their value reaches the URL
@@ -75,19 +68,12 @@ export function CatalogSearch({ variant = "desktop" }: { variant?: "desktop" | "
   }, [urlQuery, value]);
 
   function go(next: string) {
-    if (pathname === CATALOGUE_PATH) {
-      if (next === urlQuery) return;
-      startTransition(() => {
-        router.replace(
-          catalogueHref({ ...readCatalogueParams(searchParams), q: next, page: undefined }),
-          { scroll: false },
-        );
-      });
-      return;
-    }
-    startTransition(() => {
-      router.push(catalogueHref({ q: next }));
-    });
+    const onCatalogue = pathname === CATALOGUE_PATH;
+    if (onCatalogue && next === urlQuery) return;
+    navigate(
+      { ...readCatalogueParams(searchParams), q: next || undefined, page: undefined },
+      onCatalogue ? "replace" : "push",
+    );
   }
 
   const debounce = useDebounced(go, DEBOUNCE_MS);

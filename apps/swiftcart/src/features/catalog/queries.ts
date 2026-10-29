@@ -29,6 +29,7 @@ export type ProductCardModel = Awaited<ReturnType<typeof listProducts>>[number];
 export type CatalogFilters = {
   q?: string;
   store?: string;
+  category?: string;
   sort?: "new" | "price-asc" | "price-desc";
   inStock?: boolean;
   page?: number;
@@ -73,6 +74,7 @@ export async function searchProducts(filters: CatalogFilters) {
     );
   }
   if (filters.store) conditions.push(eq(stores.slug, filters.store));
+  if (filters.category) conditions.push(eq(products.category, filters.category));
   if (filters.inStock) conditions.push(gt(products.stock, 0));
   if (filters.exclude?.length) conditions.push(notInArray(products.id, filters.exclude));
 
@@ -164,6 +166,21 @@ export async function listStoreFacets() {
     .leftJoin(products, eq(products.storeId, stores.id))
     .groupBy(stores.slug, stores.name)
     .orderBy(asc(stores.name));
+}
+
+/** The filter's option list: every category a listing was filed under. */
+export async function listProductCategories() {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+
+  const rows = await getDb()
+    .selectDistinct({ category: products.category })
+    .from(products)
+    .where(isNotNull(products.category))
+    .orderBy(asc(products.category));
+
+  return rows.flatMap((row) => (row.category ? [row.category] : []));
 }
 
 export async function getProductBySlug(slug: string) {

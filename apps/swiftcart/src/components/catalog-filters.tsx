@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
 import {
   SORT_OPTIONS,
@@ -9,34 +9,51 @@ import {
   withCatalogueParam,
   type CatalogueParams,
 } from "@/lib/search-params";
+import { beginPending } from "@/lib/navigation-pending";
+import { useOptimisticParams } from "@/lib/use-optimistic-params";
 
 const SELECT_CLASS =
   "rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs text-neutral-900";
 
 type StoreOption = { slug: string; name: string };
 
-export function CatalogFilters({ stores, filtered }: { stores: StoreOption[]; filtered: boolean }) {
-  const router = useRouter();
+export function CatalogFilters({
+  stores,
+  categories,
+  filtered,
+}: {
+  stores: StoreOption[];
+  categories: string[];
+  filtered: boolean;
+}) {
   const searchParams = useSearchParams();
   // The URL is the base; the optimistic value keeps the controls on the new
   // choice while the server streams and falls back to the URL on back/forward.
   const [params, setParams] = useOptimistic<CatalogueParams>(readCatalogueParams(searchParams));
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const { navigate, pending } = useOptimisticParams();
 
   const sort = SORT_OPTIONS.find((option) => option.value === params.sort)?.value ?? "new";
 
   function apply(key: keyof CatalogueParams, value: string | undefined) {
     const next = withCatalogueParam(params, key, value);
+    // Re-picking what is already shown would raise a skeleton no URL change can
+    // clear.
+    if (catalogueHref(next) === catalogueHref(params)) return;
+    // Raise the skeleton on the event's own frame. Inside startTransition React
+    // is free to schedule the store update a frame later, and the budget is one.
+    beginPending();
     startTransition(() => {
       setParams(next);
-      router.push(catalogueHref(next), { scroll: false });
+      navigate(next, "push");
     });
   }
 
   function clear() {
+    beginPending();
     startTransition(() => {
       setParams({});
-      router.push("/", { scroll: false });
+      navigate({}, "push");
     });
   }
 
@@ -58,6 +75,22 @@ export function CatalogFilters({ stores, filtered }: { stores: StoreOption[]; fi
           {stores.map((store) => (
             <option key={store.slug} value={store.slug}>
               {store.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex items-center gap-2 text-xs text-neutral-600">
+        Category
+        <select
+          value={params.category ?? ""}
+          onChange={(event) => apply("category", event.target.value || undefined)}
+          className={SELECT_CLASS}
+        >
+          <option value="">All categories</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
             </option>
           ))}
         </select>

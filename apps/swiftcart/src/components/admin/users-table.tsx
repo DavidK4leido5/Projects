@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useOptimistic, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useOptimistic, useState, useTransition, type ReactNode } from "react";
 import { Eye, ShieldCheck, Store, Trash2, User } from "lucide-react";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import { RowMenu, type RowMenuItem } from "@/components/row-menu";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { changeUserRole, removeUserAccount } from "@/features/admin/actions";
+import { beginPending, endPending } from "@/lib/navigation-pending";
 import type { Role } from "@/lib/db/schema";
 
 const USERS_PATH = "/admin/users";
@@ -77,6 +78,11 @@ export function UsersTable({
 }: UsersTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // The URL landing is the end signal for every toolbar navigation.
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    endPending();
+  }, [paramsKey]);
   const [pending, startTransition] = useTransition();
 
   const rawRole = searchParams.get("role") ?? "all";
@@ -94,6 +100,7 @@ export function UsersTable({
 
   function write(href: string, replace: boolean) {
     startTransition(() => {
+      beginPending();
       if (replace) router.replace(href, { scroll: false });
       else router.push(href, { scroll: false });
     });

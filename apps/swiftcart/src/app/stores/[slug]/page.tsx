@@ -41,7 +41,7 @@ export default async function StorePage({ params }: PageProps) {
             <p className="text-sm text-neutral-600">This store has not listed anything yet.</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

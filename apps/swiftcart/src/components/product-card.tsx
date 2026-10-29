@@ -3,19 +3,23 @@ import Link from "next/link";
 import { formatMoney } from "@repo/shared";
 import type { ProductCardModel } from "@/features/catalog/queries";
 
+/**
+ * Compact, image-led card. The title link stretches over the whole card with
+ * ::after, so the card has one target; the store link sits above it (z-10).
+ */
 export function ProductCard({ product }: { product: ProductCardModel }) {
   const soldOut = product.stock === 0;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300">
-      <Link href={"/products/" + product.slug} className="relative block bg-neutral-100">
+    <article className="group relative flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300 has-[.card-link:focus-visible]:ring-2 has-[.card-link:focus-visible]:ring-neutral-400 has-[.card-link:focus-visible]:ring-offset-2">
+      <div className="relative bg-neutral-100">
         {product.coverKey ? (
           <Image
             src={product.coverKey}
             alt={product.name}
             width={640}
             height={640}
-            sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
             className="aspect-square w-full object-cover"
           />
         ) : (
@@ -24,44 +28,41 @@ export function ProductCard({ product }: { product: ProductCardModel }) {
           </div>
         )}
         {soldOut ? (
-          <span className="absolute left-2 top-2 rounded bg-white/95 px-2 py-1 text-[11px] font-medium text-neutral-700">
+          <span className="absolute left-2 top-2 rounded bg-white/95 px-1.5 py-0.5 text-[10px] font-medium text-neutral-700">
             Sold out
           </span>
         ) : null}
-      </Link>
+      </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <Link
-          href={"/products/" + product.slug}
-          className="truncate text-sm font-medium tracking-tight text-neutral-900 underline-offset-4 hover:underline"
-        >
-          {product.name}
-        </Link>
+      <div className="flex flex-1 flex-col gap-1 p-2.5">
+        <h3 className="line-clamp-2 text-[13px] font-medium leading-snug text-neutral-900">
+          <Link
+            href={"/products/" + product.slug}
+            className="card-link underline-offset-4 after:absolute after:inset-0 focus-visible:outline-none group-hover:underline"
+          >
+            {product.name}
+          </Link>
+        </h3>
         {product.description ? (
-          <p className="line-clamp-2 text-xs leading-5 text-neutral-600">{product.description}</p>
+          <p className="hidden text-[11px] leading-4 text-neutral-600 sm:line-clamp-2">
+            {product.description}
+          </p>
         ) : null}
         <Link
           href={"/stores/" + product.storeSlug}
-          className="truncate text-xs text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline"
+          className="relative z-10 truncate text-[11px] text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline focus-visible:text-neutral-900 focus-visible:underline focus-visible:outline-none"
         >
           {product.storeName}
         </Link>
 
-        <div className="mt-auto flex items-baseline justify-between gap-2 pt-2">
-          <span className="text-sm font-semibold tabular-nums">
+        <div className="mt-auto flex items-baseline justify-between gap-2 pt-1">
+          <span className="text-sm font-semibold tabular-nums whitespace-nowrap">
             {formatMoney(product.priceCents)}
           </span>
-          <span className="text-[11px] tabular-nums text-neutral-500">
+          <span className="text-right text-[10px] tabular-nums whitespace-nowrap text-neutral-500">
             {soldOut ? "0 left" : product.stock + " left"}
           </span>
         </div>
-
-        <Link
-          href={"/products/" + product.slug}
-          className="mt-2 inline-flex items-center justify-center rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-800 transition-colors group-hover:border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white"
-        >
-          View product
-        </Link>
       </div>
     </article>
   );

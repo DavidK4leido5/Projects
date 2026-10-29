@@ -1,6 +1,7 @@
 export type CatalogueParams = {
   q?: string;
   store?: string;
+  category?: string;
   sort?: string;
   stock?: string;
   page?: string;
@@ -19,6 +20,7 @@ export function catalogueHref(params: CatalogueParams): string {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
   if (params.store) search.set("store", params.store);
+  if (params.category) search.set("category", params.category);
   if (params.sort && params.sort !== "new") search.set("sort", params.sort);
   if (params.stock === "in") search.set("stock", "in");
   if (params.page && params.page !== "1") search.set("page", params.page);
@@ -41,6 +43,7 @@ export function readCatalogueParams(search: URLSearchParams): CatalogueParams {
   return {
     q: search.get("q") ?? undefined,
     store: search.get("store") ?? undefined,
+    category: search.get("category") ?? undefined,
     sort: search.get("sort") ?? undefined,
     stock: search.get("stock") ?? undefined,
     page: search.get("page") ?? undefined,

@@ -5,30 +5,35 @@ import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
 import { ProductCard } from "@/components/product-card";
 import { ResultsRegion } from "@/components/results-region";
-import { listStoreFacets, searchProducts } from "@/features/catalog/queries";
+import { listProductCategories, listStoreFacets, searchProducts } from "@/features/catalog/queries";
 import { SORT_OPTIONS } from "@/lib/search-params";
 
-const GRID_CLASS = "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4";
+const GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5";
 
 /**
- * Same cell padding, line heights, and button height as ProductCard, so the
- * twelve cards that land after a page change do not move the pager.
+ * Mirrors the compact ProductCard: flush square image, two-line title, the
+ * description that only shows from sm up, a store line, and a price row pushed
+ * to the bottom. Same cell padding and line heights, so the pager stays put.
  */
 function ProductGridSkeleton({ count = 12 }: { count?: number }) {
   return (
     <div className={GRID_CLASS}>
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div
+          key={index}
+          className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white"
+        >
           <Skeleton className="aspect-square w-full rounded-none" />
-          <div className="flex flex-col gap-1.5 p-3">
-            <Skeleton className="h-5 w-2/3" />
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-4 w-1/2" />
-            <div className="flex items-baseline justify-between gap-2 pt-2">
-              <Skeleton className="h-5 w-16" />
-              <Skeleton className="h-3 w-8" />
+          <div className="flex flex-1 flex-col gap-1 p-2.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="hidden h-3.5 w-full sm:block" />
+            <Skeleton className="hidden h-3.5 w-2/3 sm:block" />
+            <Skeleton className="h-3.5 w-1/3" />
+            <div className="mt-auto flex items-baseline justify-between gap-2 pt-1">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-2.5 w-8" />
             </div>
-            <Skeleton className="mt-2 h-[30px] w-full" />
           </div>
         </div>
       ))}
@@ -39,6 +44,7 @@ function ProductGridSkeleton({ count = 12 }: { count?: number }) {
 export type CatalogueSearch = {
   q?: string;
   store?: string;
+  category?: string;
   sort?: string;
   stock?: string;
   page?: string;
@@ -55,16 +61,22 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
   const inStock = params.stock === "in";
   const q = params.q?.trim() ?? "";
   const store = params.store ?? "";
+  const category = params.category?.trim() ?? "";
 
-  const [facets, catalog] = await Promise.all([
+  const [facets, categories, catalog] = await Promise.all([
     listStoreFacets(),
-    searchProducts({ q, store, sort, inStock, page, perPage: 12 }),
+    listProductCategories(),
+    searchProducts({ q, store, category, sort, inStock, page, perPage: 12 }),
   ]);
 
-  const filtered = Boolean(q || store || inStock || sort !== "new");
+  const filtered = Boolean(q || store || category || inStock || sort !== "new");
   const storeName = store ? (facets.find((facet) => facet.slug === store)?.name ?? store) : "";
   const sortLabel = SORT_OPTIONS.find((option) => option.value === sort)?.label.toLowerCase();
-  const scope = [q ? 'for "' + q + '"' : "", storeName ? "in " + storeName : ""]
+  const scope = [
+    q ? 'for "' + q + '"' : "",
+    category ? "in " + category : "",
+    storeName ? "in " + storeName : "",
+  ]
     .filter(Boolean)
     .join(" ");
   const conditions = [
@@ -126,6 +138,7 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
 
       <CatalogFilters
         stores={facets.map((facet) => ({ slug: facet.slug, name: facet.name }))}
+        categories={categories}
         filtered={filtered}
       />
 

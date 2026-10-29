@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Ban, ExternalLink, StickyNote } from "lucide-react";
@@ -27,6 +27,7 @@ import { RowMenu } from "@/components/row-menu";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { addOrderNote, setFulfilmentStatus } from "@/features/orders/tracking-actions";
+import { beginPending, endPending } from "@/lib/navigation-pending";
 import { orderStatus } from "@/lib/order-rollup";
 import { nextStatus, type SliceStatus } from "@/lib/order-status";
 
@@ -74,6 +75,11 @@ export function OrdersTable({
 }: OrdersTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // The URL landing is the end signal for every toolbar navigation.
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    endPending();
+  }, [paramsKey]);
   const [pending, startTransition] = useTransition();
 
   const rawStatus = searchParams.get("status") ?? "all";
@@ -106,6 +112,7 @@ export function OrdersTable({
 
   function write(href: string, replace: boolean) {
     startTransition(() => {
+      beginPending();
       if (replace) router.replace(href, { scroll: false });
       else router.push(href, { scroll: false });
     });
@@ -117,6 +124,7 @@ export function OrdersTable({
 
   function filter(value: string) {
     startTransition(() => {
+      beginPending();
       setStatusValue(value);
       router.push(ordersHref({ q, status: value, page: 1 }), { scroll: false });
     });
