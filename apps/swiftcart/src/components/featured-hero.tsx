@@ -53,8 +53,12 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      {/* 9:16 on phones, exactly 16:9 from sm up, matching the two banner files. */}
-      <div className="relative aspect-[9/16] w-full sm:aspect-video">
+      {/*
+        Height is capped rather than locked to the banner ratio: full-bleed width at
+        16:9 would be ~810px tall on desktop, which dwarfed the page. The upload
+        still requires 16:9 art; object-cover crops it to the frame.
+      */}
+      <div className="relative h-[min(78vh,640px)] w-full sm:h-[clamp(300px,40vw,560px)]">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (
