@@ -1,4 +1,13 @@
-import { integer, pgTable, text, timestamp, uniqueIndex, uuid, index } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 /**
  * Identity lives in Neon Auth (hosted Better Auth). This table is our app-side
@@ -47,6 +56,7 @@ export const products = pgTable(
     description: text("description").notNull().default(""),
     priceCents: integer("price_cents").notNull(),
     stock: integer("stock").notNull().default(0),
+    featured: boolean("featured").notNull().default(false),
     imageKey: text("image_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

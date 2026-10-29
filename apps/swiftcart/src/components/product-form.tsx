@@ -14,6 +14,7 @@ type ProductFormProps = {
     description: string;
     priceCents: number;
     stock: number;
+    featured: boolean;
     imageKey: string | null;
   };
 };
@@ -76,6 +77,21 @@ export function ProductForm({ action, product }: ProductFormProps) {
             </span>
           </div>
         </div>
+
+        <label className="flex items-start gap-3 rounded-md border border-neutral-200 px-3 py-2.5">
+          <input
+            type="checkbox"
+            name="featured"
+            defaultChecked={product?.featured ?? false}
+            className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-neutral-900">Feature in the hero</span>
+            <span className="text-xs text-neutral-500">
+              Featured products with an image rotate at the top of the shop.
+            </span>
+          </span>
+        </label>
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="description" className="text-sm font-medium text-neutral-900">

@@ -55,7 +55,14 @@ export default async function DashboardPage() {
             <tbody className="divide-y divide-neutral-200">
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td className="px-5 py-3 font-medium text-neutral-900">{item.name}</td>
+                  <td className="px-5 py-3 font-medium text-neutral-900">
+                    {item.name}
+                    {item.featured ? (
+                      <span className="ml-2 rounded bg-neutral-900 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
+                        Hero
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-5 py-3 text-neutral-600">{formatMoney(item.priceCents)}</td>
                   <td className="px-5 py-3 text-neutral-600">{item.stock}</td>
                   <td className="px-5 py-3 text-neutral-600">{formatDate(item.createdAt)}</td>

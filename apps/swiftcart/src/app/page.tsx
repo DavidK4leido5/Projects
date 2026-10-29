@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button, Card, CardTitle } from "@repo/ui";
 import { FeaturedHero } from "@/components/featured-hero";
 import { ProductCard } from "@/components/product-card";
-import { getFeaturedProduct, listStoreFacets, searchProducts } from "@/features/catalog/queries";
+import { listFeaturedProducts, listStoreFacets, searchProducts } from "@/features/catalog/queries";
 
 export const metadata = { title: "All products" };
 
@@ -44,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     listStoreFacets(),
     searchProducts({ q, store, sort, inStock, page, perPage: 12 }),
     searchProducts({ sort: "price-asc", inStock: true, perPage: 8 }),
-    getFeaturedProduct(),
+    listFeaturedProducts(),
   ]);
 
   // The rail only earns its space if it shows something the grid does not.
@@ -55,7 +55,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
 
   return (
     <>
-      {!filtered && featured ? <FeaturedHero product={featured} /> : null}
+      {!filtered && featured.length > 0 ? <FeaturedHero slides={featured} /> : null}
 
       <main id="catalogue" className="mx-auto max-w-6xl scroll-mt-24 px-4 pb-10 pt-6">
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-neutral-500">

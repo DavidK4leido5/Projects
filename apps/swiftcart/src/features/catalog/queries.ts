@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gt, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, isNotNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { products, stores } from "@/lib/db/schema";
 
@@ -86,26 +86,30 @@ export async function searchProducts(filters: CatalogFilters) {
   return { items, total, page, perPage, pages: Math.max(1, Math.ceil(total / perPage)) };
 }
 
-/** The newest product still in stock, falling back to the newest of anything. */
-export async function getFeaturedProduct() {
-  const live = await getDb()
-    .select(productColumns)
+export type HeroSlideModel = {
+  id: string;
+  slug: string;
+  name: string;
+  imageKey: string;
+};
+
+/** Featured products that have artwork, newest first. These drive the hero. */
+export async function listFeaturedProducts(limit = 8): Promise<HeroSlideModel[]> {
+  const rows = await getDb()
+    .select({
+      id: products.id,
+      slug: products.slug,
+      name: products.name,
+      imageKey: products.imageKey,
+    })
     .from(products)
     .innerJoin(stores, eq(products.storeId, stores.id))
-    .where(gt(products.stock, 0))
+    .where(and(eq(products.featured, true), isNotNull(products.imageKey)))
     .orderBy(desc(products.createdAt))
-    .limit(1);
+    .limit(limit);
 
-  if (live[0]) return live[0];
-
-  const any = await getDb()
-    .select(productColumns)
-    .from(products)
-    .innerJoin(stores, eq(products.storeId, stores.id))
-    .orderBy(desc(products.createdAt))
-    .limit(1);
-
-  return any[0] ?? null;
+  // The where clause guarantees a key; the cast keeps that promise in the type.
+  return rows.flatMap((row) => (row.imageKey ? [{ ...row, imageKey: row.imageKey }] : []));
 }
 
 export async function listStoreFacets() {

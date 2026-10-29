@@ -1,65 +1,132 @@
+"use client";
+
 import Link from "next/link";
-import { formatMoney } from "@repo/shared";
-import type { ProductCardModel } from "@/features/catalog/queries";
+import { useCallback, useEffect, useState } from "react";
 
-export function FeaturedHero({ product }: { product: ProductCardModel }) {
+export type HeroSlide = {
+  id: string;
+  slug: string;
+  name: string;
+  imageKey: string;
+};
+
+const INTERVAL_MS = 5500;
+
+export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = slides.length;
+
+  const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
+
+  useEffect(() => {
+    if (count < 2 || paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timer = window.setInterval(
+      () => setIndex((current) => (current + 1) % count),
+      INTERVAL_MS,
+    );
+    return () => window.clearInterval(timer);
+  }, [count, paused]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowRight") setIndex((current) => (current + 1) % count);
+      if (event.key === "ArrowLeft") setIndex((current) => (current - 1 + count) % count);
+    }
+    if (count > 1) {
+      window.addEventListener("keydown", onKeyDown);
+      return () => window.removeEventListener("keydown", onKeyDown);
+    }
+  }, [count]);
+
   return (
-    <section className="relative isolate overflow-hidden border-b border-neutral-800 bg-neutral-950 text-white">
-      {product.imageKey ? (
-        <>
-          <img
-            src={"/api/images/" + product.imageKey}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover opacity-70"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/80 to-neutral-950/20" />
-        </>
-      ) : (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-16 top-1/2 hidden -translate-y-1/2 select-none text-[34rem] font-semibold leading-none text-white/[0.04] md:block"
-        >
-          {product.name.charAt(0)}
-        </span>
-      )}
+    <section
+      aria-roledescription="carousel"
+      aria-label="Featured products"
+      className="relative overflow-hidden bg-neutral-950"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      <div className="relative h-[clamp(300px,40vw,560px)] w-full">
+        {slides.map((slide, slideIndex) => {
+          const active = slideIndex === index;
+          return (
+            <Link
+              key={slide.id}
+              href={"/products/" + slide.slug}
+              aria-hidden={!active}
+              tabIndex={active ? 0 : -1}
+              className={
+                "absolute inset-0 block transition-opacity duration-700 ease-out " +
+                (active ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
+              }
+            >
+              <img
+                src={"/api/images/" + slide.imageKey}
+                alt={slide.name}
+                className="h-full w-full object-cover"
+              />
+            </Link>
+          );
+        })}
 
-      <div className="relative mx-auto flex min-h-[440px] max-w-6xl flex-col justify-end gap-6 px-4 py-16 sm:px-6 md:min-h-[520px] md:justify-center md:py-24">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
-          <span className="tabular-nums">{formatMoney(product.priceCents)}</span>
-          <span aria-hidden="true" className="h-3 w-px bg-neutral-700" />
-          <span className="tabular-nums">{product.stock} in stock</span>
-          <span aria-hidden="true" className="h-3 w-px bg-neutral-700" />
-          <Link
-            href={"/stores/" + product.storeSlug}
-            className="underline-offset-4 transition-colors hover:text-white hover:underline"
-          >
-            {product.storeName}
-          </Link>
-        </div>
+        {count > 1 ? (
+          <>
+            <button
+              type="button"
+              onClick={() => go(index - 1)}
+              aria-label="Previous featured product"
+              className="absolute left-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-950/40 text-white backdrop-blur transition-colors hover:bg-neutral-950/70 sm:flex"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="m14 6-6 6 6 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
 
-        <h1 className="max-w-[14ch] text-5xl font-semibold uppercase leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl">
-          {product.name}
-        </h1>
+            <button
+              type="button"
+              onClick={() => go(index + 1)}
+              aria-label="Next featured product"
+              className="absolute right-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-950/40 text-white backdrop-blur transition-colors hover:bg-neutral-950/70 sm:flex"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="m10 6 6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
 
-        {product.description ? (
-          <p className="max-w-[42ch] text-sm leading-6 text-neutral-300">{product.description}</p>
+            <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-2">
+              {slides.map((slide, slideIndex) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => go(slideIndex)}
+                  aria-label={"Show " + slide.name}
+                  aria-current={slideIndex === index}
+                  className={
+                    "h-1.5 rounded-full transition-all " +
+                    (slideIndex === index ? "w-7 bg-white" : "w-1.5 bg-white/40 hover:bg-white/70")
+                  }
+                />
+              ))}
+            </div>
+          </>
         ) : null}
-
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <Link
-            href={"/products/" + product.slug}
-            className="inline-flex items-center justify-center rounded-md bg-white px-5 py-2.5 text-sm font-medium text-neutral-950 transition-colors hover:bg-neutral-200"
-          >
-            View product
-          </Link>
-          <Link
-            href="#catalogue"
-            className="inline-flex items-center justify-center rounded-md border border-neutral-700 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:border-neutral-400 hover:bg-neutral-900"
-          >
-            Browse all
-          </Link>
-        </div>
       </div>
     </section>
   );

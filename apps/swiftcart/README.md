@@ -27,6 +27,16 @@ is one query.
 The rail below the grid only renders when nothing is filtered, because showing unrelated products
 under a search result is worse than showing none.
 
+## The hero
+
+A store marks any of its products `featured`. The landing page collects those that also have artwork,
+newest first, and renders them as a carousel: autoplay every 5.5s, arrows, dots, arrow-key support,
+and pausing on hover or focus. Controls disappear when there is only one slide.
+
+The slide is the image and nothing else. Stores are expected to bake their own type into the artwork,
+so the hero never overlays a headline. A featured product with no image is skipped rather than shown
+as a labelled placeholder, and a shop with no featured artwork simply starts at the catalogue.
+
 ## Layers
 
 ```

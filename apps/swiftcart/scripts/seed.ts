@@ -1,15 +1,26 @@
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getDb } from "../src/lib/db/index.js";
+import { getStorageConfig } from "../src/lib/env.js";
+import { posterTile } from "./png.js";
 import { cartItems, products, profiles, stores } from "../src/lib/db/schema.js";
 
 const ORIGIN = process.env.NEON_AUTH_TRUSTED_ORIGIN ?? "http://localhost:3000";
 const PASSWORD = "demo1234";
+
+type SeedProduct = {
+  name: string;
+  price: number;
+  description: string;
+  stock: number;
+  featured?: boolean;
+};
 
 type SeedStore = {
   slug: string;
   name: string;
   tagline: string;
   email: string;
-  products: Array<{ name: string; price: number; description: string; stock: number }>;
+  products: SeedProduct[];
 };
 
 const STORES: SeedStore[] = [
@@ -24,18 +35,21 @@ const STORES: SeedStore[] = [
         price: 48,
         description: "Solid walnut, felt base, holds a week of clutter.",
         stock: 8,
+        featured: true,
       },
       {
         name: "Brass Ruler 12in",
         price: 26,
         description: "Machined brass with etched markings that never wear off.",
         stock: 8,
+        featured: true,
       },
       {
         name: "Canvas Tool Roll",
         price: 62,
         description: "Waxed canvas, eight pockets, rolls to the size of a forearm.",
         stock: 8,
+        featured: true,
       },
       {
         name: "Cedar Sharpening Stone",
@@ -60,6 +74,39 @@ function baseUrl(): string {
   const url = process.env.NEON_AUTH_BASE_URL;
   if (!url) throw new Error("NEON_AUTH_BASE_URL is not set.");
   return url;
+}
+
+function hueOf(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) hash = (hash * 31 + input.charCodeAt(i)) % 360;
+  return hash;
+}
+
+function storageClient() {
+  const config = getStorageConfig();
+  if (!config) throw new Error("Object storage is not configured.");
+  const client = new S3Client({
+    region: config.region,
+    endpoint: config.endpoint,
+    forcePathStyle: true,
+    credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
+  });
+  return { client, bucket: config.bucket };
+}
+
+/** Demo artwork so the catalogue is not a wall of grey boxes. */
+async function uploadTile(name: string): Promise<string> {
+  const { client, bucket } = storageClient();
+  const key = "products/seed/" + toSlug(name) + ".png";
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: posterTile(1600, 800, hueOf(name)),
+      ContentType: "image/png",
+    }),
+  );
+  return key;
 }
 
 function toSlug(name: string): string {
@@ -126,16 +173,19 @@ async function main() {
     const store = inserted[0];
     if (!store) throw new Error("Could not insert store " + seed.slug);
 
-    await db.insert(products).values(
-      seed.products.map((item) => ({
+    for (const item of seed.products) {
+      const imageKey = await uploadTile(item.name);
+      await db.insert(products).values({
         storeId: store.id,
         slug: toSlug(item.name) + "-" + Math.random().toString(36).slice(2, 6),
         name: item.name,
         description: item.description,
         priceCents: Math.round(item.price * 100),
         stock: item.stock,
-      })),
-    );
+        featured: item.featured ?? false,
+        imageKey,
+      });
+    }
   }
 
   const shopperId = await ensureAuthUser(SHOPPER.email, SHOPPER.name);

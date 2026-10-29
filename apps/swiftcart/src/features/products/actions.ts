@@ -27,6 +27,7 @@ type ProductInput = {
   description: string;
   priceCents: number;
   stock: number;
+  featured: boolean;
   imageKey: string | null;
 };
 
@@ -37,6 +38,7 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
   const imageKey = text(formData, "imageKey") || null;
   const stockRaw = text(formData, "stock");
   const stock = stockRaw === "" ? 0 : Number(stockRaw);
+  const featured = formData.get("featured") === "on";
 
   if (name.length < 2) return { error: "Product name must be at least 2 characters." };
   if (name.length > 80) return { error: "Product name is too long." };
@@ -45,7 +47,7 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
     return { error: "Stock must be a whole number, zero or more." };
   if (description.length > 2000) return { error: "Description is too long." };
 
-  return { name, description, priceCents, stock, imageKey };
+  return { name, description, priceCents, stock, featured, imageKey };
 }
 
 export async function createProduct(_prev: FormState, formData: FormData): Promise<FormState> {
