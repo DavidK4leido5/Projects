@@ -4,12 +4,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
 import { cartItems, productVariants } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth/guards";
+import { ensureCart, getCartId, mergeGuestCart } from "@/lib/cart";
 
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
+export type CartResult = { ok: true } | { ok: false; error: string };
 
 async function variantStock(
   variantId: string,
@@ -22,67 +19,72 @@ async function variantStock(
   return rows[0] ?? null;
 }
 
-export async function addToCart(formData: FormData): Promise<void> {
-  const actor = await requireUser();
-  const variantId = text(formData, "variantId");
-  if (!variantId) return;
+/** Runs right after sign-in so the guest cart follows the visitor in. */
+export async function mergeCartAfterLogin(): Promise<void> {
+  await mergeGuestCart();
+  revalidatePath("/cart");
+}
+
+export async function addToCart(variantId: string): Promise<CartResult> {
+  if (!variantId) return { ok: false, error: "Missing variant." };
 
   const variant = await variantStock(variantId);
-  if (!variant || variant.stock <= 0) return;
+  if (!variant) return { ok: false, error: "That item is no longer available." };
+  if (variant.stock <= 0) return { ok: false, error: "Out of stock." };
+
+  const cartId = await ensureCart();
 
   await getDb()
     .insert(cartItems)
-    .values({ userId: actor.profile.id, productId: variant.productId, variantId, quantity: 1 })
+    .values({ cartId, productId: variant.productId, variantId, quantity: 1 })
     .onConflictDoUpdate({
-      target: [cartItems.userId, cartItems.variantId],
+      target: [cartItems.cartId, cartItems.variantId],
       set: { quantity: sql`least(${cartItems.quantity} + 1, ${variant.stock})` },
     });
 
   revalidatePath("/cart");
-  revalidatePath("/");
+  return { ok: true };
 }
 
-export async function setQuantity(formData: FormData): Promise<void> {
-  const actor = await requireUser();
-  const id = text(formData, "id");
-  const requested = Number(text(formData, "quantity"));
-  if (!id || !Number.isFinite(requested)) return;
+export async function setQuantity(id: string, quantity: number): Promise<CartResult> {
+  const cartId = await getCartId();
+  if (!cartId) return { ok: false, error: "Your cart is empty." };
 
   const rows = await getDb()
     .select({ variantId: cartItems.variantId })
     .from(cartItems)
-    .where(and(eq(cartItems.id, id), eq(cartItems.userId, actor.profile.id)))
+    .where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)))
     .limit(1);
 
   const row = rows[0];
-  if (!row) return;
+  if (!row) return { ok: false, error: "That line is gone." };
 
   const variant = await variantStock(row.variantId);
   const stock = Math.max(variant?.stock ?? 0, 1);
-  const quantity = Math.min(Math.max(Math.trunc(requested), 0), stock);
+  const wanted = Math.min(Math.max(Math.trunc(quantity), 0), stock);
 
-  if (quantity === 0) {
+  if (wanted === 0) {
     await getDb()
       .delete(cartItems)
-      .where(and(eq(cartItems.id, id), eq(cartItems.userId, actor.profile.id)));
+      .where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   } else {
     await getDb()
       .update(cartItems)
-      .set({ quantity })
-      .where(and(eq(cartItems.id, id), eq(cartItems.userId, actor.profile.id)));
+      .set({ quantity: wanted })
+      .where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   }
 
   revalidatePath("/cart");
+  return { ok: true };
 }
 
-export async function removeFromCart(formData: FormData): Promise<void> {
-  const actor = await requireUser();
-  const id = text(formData, "id");
-  if (!id) return;
+export async function removeFromCart(id: string): Promise<CartResult> {
+  const cartId = await getCartId();
+  if (!cartId) return { ok: false, error: "Your cart is empty." };
 
   await getDb()
     .delete(cartItems)
-    .where(and(eq(cartItems.id, id), eq(cartItems.userId, actor.profile.id)));
-
+    .where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   revalidatePath("/cart");
+  return { ok: true };
 }

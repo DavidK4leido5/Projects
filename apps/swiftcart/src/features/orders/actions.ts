@@ -2,12 +2,34 @@
 
 import { and, eq, gte, sql } from "drizzle-orm";
 import { updateTag } from "next/cache";
-import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
-import { cartItems, orderItems, orders, productVariants, products } from "@/lib/db/schema";
-import { requireAdmin, requireUser } from "@/lib/auth/guards";
+import {
+  addresses,
+  cartItems,
+  orderItems,
+  orders,
+  productVariants,
+  products,
+  profiles,
+} from "@/lib/db/schema";
+import { getActor, requireAdmin } from "@/lib/auth/guards";
+import { getCartId } from "@/lib/cart";
 import { getCart } from "@/features/cart/queries";
 import { tags } from "@/lib/cache";
+
+export type PlaceOrderResult = { ok: true; token: string } | { ok: false; error: string };
+
+/** The delivery snapshot an order is created from. */
+type Delivery = {
+  fullName: string;
+  phone: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  region: string | null;
+  postal: string;
+  country: string;
+};
 
 /** "Size: M, Color: Bone" for the order snapshot. */
 function summarise(options: Record<string, string>): string | null {
@@ -16,8 +38,50 @@ function summarise(options: Record<string, string>): string | null {
   return entries.map(([name, value]) => name + ": " + value).join(", ");
 }
 
+function field(formData: FormData, name: string): string {
+  return String(formData.get(name) ?? "").trim();
+}
+
+type DeliveryResult = { ok: true; delivery: Delivery } | { ok: false; error: string };
+
+function readDelivery(formData: FormData): DeliveryResult {
+  const fullName = field(formData, "fullName");
+  if (fullName.length < 2) return { ok: false, error: "Enter your full name." };
+
+  const phone = field(formData, "phone");
+  const digits = phone.replace(/\D/g, "").length;
+  if (!/^[+\d][\d\s()-]*$/.test(phone) || digits < 7 || digits > 20) {
+    return { ok: false, error: "Enter a phone number with 7 to 20 digits." };
+  }
+
+  const line1 = field(formData, "line1");
+  if (line1.length < 4) return { ok: false, error: "Enter your street address." };
+
+  const city = field(formData, "city");
+  if (city.length < 2) return { ok: false, error: "Enter your city." };
+
+  const postal = field(formData, "postal");
+  if (postal.length < 3) return { ok: false, error: "Enter your postal code." };
+
+  return {
+    ok: true,
+    delivery: {
+      fullName,
+      phone,
+      line1,
+      line2: field(formData, "line2") || null,
+      city,
+      region: field(formData, "region") || null,
+      postal,
+      country: field(formData, "country") || "PH",
+    },
+  };
+}
+
 /**
- * Turns the cart into an order.
+ * Turns the cart into an order, for guests as well as signed-in shoppers.
+ * On success the caller gets the order's access token, which is the only way
+ * back into a guest order.
  *
  * Stock is claimed on the variant with a conditional update per row, so two
  * shoppers cannot both take the last unit of one combination. The HTTP driver
@@ -25,15 +89,36 @@ function summarise(options: Record<string, string>): string | null {
  * claims back. That leaves a small window where a crash mid-loop under-counts
  * stock, which is survivable; it never oversells.
  */
-export async function placeOrder(_formData: FormData): Promise<void> {
-  const actor = await requireUser();
-  const { items, totalCents } = await getCart(actor.profile.id);
-  if (items.length === 0) redirect("/cart");
+export async function placeOrder(formData: FormData): Promise<PlaceOrderResult> {
+  const cartId = await getCartId();
+  const cart = await getCart(cartId);
+  if (!cartId || cart.items.length === 0) return { ok: false, error: "Your cart is empty." };
+
+  const actor = await getActor();
+  const parsed = readDelivery(formData);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  const delivery = parsed.delivery;
 
   const db = getDb();
+
+  if (actor.kind === "user") {
+    await db
+      .insert(addresses)
+      .values({ profileId: actor.profile.id, ...delivery })
+      .onConflictDoUpdate({
+        target: addresses.profileId,
+        set: { ...delivery, updatedAt: new Date() },
+      });
+
+    await db
+      .update(profiles)
+      .set({ fullName: delivery.fullName, phone: delivery.phone })
+      .where(eq(profiles.id, actor.profile.id));
+  }
+
   const claimed: Array<{ variantId: string; quantity: number }> = [];
 
-  for (const item of items) {
+  for (const item of cart.items) {
     const updated = await db
       .update(productVariants)
       .set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
@@ -47,14 +132,18 @@ export async function placeOrder(_formData: FormData): Promise<void> {
           .set({ stock: sql`${productVariants.stock} + ${done.quantity}` })
           .where(eq(productVariants.id, done.variantId));
       }
-      redirect("/cart?error=stock");
+      return {
+        ok: false,
+        error:
+          "Someone took the last of something. Nothing was reserved. Adjust the cart and try again.",
+      };
     }
 
     claimed.push({ variantId: item.variantId, quantity: item.quantity });
   }
 
   // Products keep a rolled-up stock number for cards and filters.
-  for (const item of items) {
+  for (const item of cart.items) {
     await db
       .update(products)
       .set({ stock: sql`greatest(${products.stock} - ${item.quantity}, 0)` })
@@ -63,14 +152,26 @@ export async function placeOrder(_formData: FormData): Promise<void> {
 
   const inserted = await db
     .insert(orders)
-    .values({ userId: actor.profile.id, customerEmail: actor.profile.email, totalCents })
-    .returning({ id: orders.id });
+    .values({
+      userId: actor.kind === "anonymous" ? null : actor.profile.id,
+      customerEmail: actor.kind === "anonymous" ? null : actor.profile.email,
+      customerName: delivery.fullName,
+      customerPhone: delivery.phone,
+      deliveryLine1: delivery.line1,
+      deliveryLine2: delivery.line2,
+      deliveryCity: delivery.city,
+      deliveryRegion: delivery.region,
+      deliveryPostal: delivery.postal,
+      deliveryCountry: delivery.country,
+      totalCents: cart.totalCents,
+    })
+    .returning({ id: orders.id, accessToken: orders.accessToken });
 
   const order = inserted[0];
-  if (!order) redirect("/cart?error=order");
+  if (!order) return { ok: false, error: "Could not create the order. Nothing was reserved." };
 
   await db.insert(orderItems).values(
-    items.map((item) => ({
+    cart.items.map((item) => ({
       orderId: order.id,
       productId: item.productId,
       variantId: item.variantId,
@@ -82,11 +183,11 @@ export async function placeOrder(_formData: FormData): Promise<void> {
     })),
   );
 
-  await db.delete(cartItems).where(eq(cartItems.userId, actor.profile.id));
+  await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
 
   updateTag(tags.orders);
   updateTag(tags.products);
-  redirect("/orders/" + order.id);
+  return { ok: true, token: order.accessToken };
 }
 
 export async function setOrderStatus(formData: FormData): Promise<void> {

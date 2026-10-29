@@ -56,7 +56,7 @@ async function AdminOrdersPageBody() {
                 <tr key={order.id}>
                   <td className="px-5 py-3">
                     <Link
-                      href={"/orders/" + order.id}
+                      href={"/orders/" + order.accessToken}
                       className="font-mono text-xs text-neutral-900 underline-offset-4 hover:underline"
                     >
                       {order.id.slice(0, 8)}

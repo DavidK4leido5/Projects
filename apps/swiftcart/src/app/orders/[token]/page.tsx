@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { formatDate, formatMoney } from "@repo/shared";
 import { Card, CardTitle } from "@repo/ui";
-import { getOrder } from "@/features/orders/queries";
-import { getActor } from "@/lib/auth/guards";
+import { getOrderByToken } from "@/features/orders/queries";
 import { PageSkeleton } from "@/components/skeletons";
+
+export const metadata = { title: "Order" };
 
 const STATUS_STYLES = {
   placed: "bg-neutral-100 text-neutral-700",
@@ -17,26 +18,27 @@ function statusClass(status: string) {
   return STATUS_STYLES[status as keyof typeof STATUS_STYLES] ?? STATUS_STYLES.placed;
 }
 
-async function OrderPageBody({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const actor = await getActor();
-  if (actor.kind === "anonymous") redirect("/login");
-
-  const result = await getOrder(id);
+async function OrderPageBody({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const result = await getOrderByToken(token);
   if (!result) notFound();
 
   const { order, items } = result;
-  const isAdmin = actor.kind === "admin";
-  if (order.userId !== actor.profile.id && !isAdmin) notFound();
+
+  const address = [
+    order.deliveryLine1,
+    order.deliveryLine2,
+    [order.deliveryCity, order.deliveryRegion, order.deliveryPostal].filter(Boolean).join(", "),
+    order.deliveryCountry,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <div className="flex flex-col gap-2 border-b border-neutral-200 pb-6">
-        <Link
-          href={isAdmin ? "/admin/orders" : "/orders"}
-          className="text-sm text-neutral-600 underline-offset-4 hover:underline"
-        >
-          {isAdmin ? "All orders" : "Back to orders"}
+        <Link href="/" className="text-sm text-neutral-600 underline-offset-4 hover:underline">
+          Back to the shop
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-xl font-semibold tracking-tight">{order.id.slice(0, 8)}</h1>
@@ -50,12 +52,13 @@ async function OrderPageBody({ params }: { params: Promise<{ id: string }> }) {
           </span>
         </div>
         <p className="text-sm text-neutral-600">
-          Placed {formatDate(order.createdAt)} for {order.customerEmail}
+          Placed {formatDate(order.createdAt)}
+          {order.customerName ? " for " + order.customerName : ""}
         </p>
       </div>
 
       {items.length === 0 ? (
-        <Card className="mt-8">
+        <Card className="mt-8 p-5">
           <p className="text-sm text-neutral-600">This order has no line items recorded.</p>
         </Card>
       ) : (
@@ -104,8 +107,24 @@ async function OrderPageBody({ params }: { params: Promise<{ id: string }> }) {
         </Card>
       )}
 
-      <div className="mt-6 flex flex-col items-end gap-3">
-        <Card className="flex w-full max-w-xs flex-col gap-3">
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <Card className="flex flex-col gap-2 p-5">
+          <CardTitle className="text-sm font-medium text-neutral-600">Delivery</CardTitle>
+          <p className="text-sm font-medium text-neutral-900">{order.customerName ?? "Guest"}</p>
+          {order.customerPhone ? (
+            <p className="text-sm text-neutral-600">{order.customerPhone}</p>
+          ) : null}
+          <p className="text-sm text-neutral-600">
+            {address || "No delivery address was recorded."}
+          </p>
+          {order.customerEmail ? (
+            <p className="text-sm text-neutral-600">{order.customerEmail}</p>
+          ) : (
+            <p className="text-sm text-neutral-600">Guest checkout, no email on file.</p>
+          )}
+        </Card>
+
+        <Card className="flex flex-col gap-3 p-5">
           <CardTitle className="text-sm font-medium text-neutral-600">Summary</CardTitle>
           <div className="flex items-baseline justify-between gap-3 text-sm">
             <span className="text-neutral-600">Total</span>
@@ -114,10 +133,10 @@ async function OrderPageBody({ params }: { params: Promise<{ id: string }> }) {
           <p className="text-xs text-neutral-500">
             {items.length} {items.length === 1 ? "line item" : "line items"}
           </p>
+          <p className="text-xs text-neutral-500">
+            No payment was taken. This records what was reserved.
+          </p>
         </Card>
-        <p className="text-xs text-neutral-500">
-          No payment was taken. This records what was reserved.
-        </p>
       </div>
     </main>
   );

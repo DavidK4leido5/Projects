@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@repo/ui";
 import { provisionAccount } from "@/features/auth/actions";
+import { mergeCartAfterLogin } from "@/features/cart/actions";
 import { authClient } from "@/lib/auth/client";
 
 type Mode = "signin" | "signup-user" | "signup-store";
@@ -73,6 +74,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
         }
       }
 
+      // The guest cart follows the visitor into their account.
+      await mergeCartAfterLogin();
       router.push("/continue");
       router.refresh();
     } catch (thrown) {

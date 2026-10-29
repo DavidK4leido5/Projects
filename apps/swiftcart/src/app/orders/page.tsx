@@ -83,7 +83,7 @@ async function OrdersPageBody() {
                   </td>
                   <td className="px-5 py-3 text-right">
                     <Link
-                      href={"/orders/" + order.id}
+                      href={"/orders/" + order.accessToken}
                       className="rounded-md px-2 py-1 font-medium text-neutral-900 underline-offset-4 hover:bg-neutral-100"
                     >
                       View

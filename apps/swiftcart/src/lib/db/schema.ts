@@ -22,6 +22,8 @@ export const profiles = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     role: text("role").notNull().default("user"),
+    fullName: text("full_name"),
+    phone: text("phone"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("profiles_email_idx").on(table.email)],
@@ -108,13 +110,25 @@ export const productImages = pgTable(
   ],
 );
 
+export const carts = pgTable(
+  "carts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").references(() => profiles.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("carts_user_idx").on(table.userId)],
+);
+
 export const cartItems = pgTable(
   "cart_items",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id")
+    cartId: uuid("cart_id")
       .notNull()
-      .references(() => profiles.id, { onDelete: "cascade" }),
+      .references(() => carts.id, { onDelete: "cascade" }),
     productId: uuid("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
@@ -125,10 +139,27 @@ export const cartItems = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("cart_items_user_variant_idx").on(table.userId, table.variantId),
-    index("cart_items_user_idx").on(table.userId),
+    uniqueIndex("cart_items_cart_variant_idx").on(table.cartId, table.variantId),
+    index("cart_items_cart_idx").on(table.cartId),
   ],
 );
+
+export const addresses = pgTable("addresses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: text("profile_id")
+    .notNull()
+    .unique()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  fullName: text("full_name").notNull(),
+  phone: text("phone").notNull(),
+  line1: text("line1").notNull(),
+  line2: text("line2"),
+  city: text("city").notNull(),
+  region: text("region"),
+  postal: text("postal").notNull(),
+  country: text("country").notNull().default("PH"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const orders = pgTable(
   "orders",
@@ -136,7 +167,16 @@ export const orders = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     // The identity can go away; the order and its money must not.
     userId: text("user_id").references(() => profiles.id, { onDelete: "set null" }),
-    customerEmail: text("customer_email").notNull(),
+    customerEmail: text("customer_email"),
+    customerName: text("customer_name"),
+    customerPhone: text("customer_phone"),
+    deliveryLine1: text("delivery_line1"),
+    deliveryLine2: text("delivery_line2"),
+    deliveryCity: text("delivery_city"),
+    deliveryRegion: text("delivery_region"),
+    deliveryPostal: text("delivery_postal"),
+    deliveryCountry: text("delivery_country"),
+    accessToken: uuid("access_token").notNull().defaultRandom().unique(),
     status: text("status").notNull().default("placed"),
     totalCents: integer("total_cents").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

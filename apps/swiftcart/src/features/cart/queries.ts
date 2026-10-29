@@ -4,7 +4,9 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { cartItems, productImages, productVariants, products, stores } from "@/lib/db/schema";
 
-export async function getCart(userId: string) {
+export async function getCart(cartId: string | null) {
+  if (!cartId) return { items: [], totalCents: 0, itemCount: 0 };
+
   const rows = await getDb()
     .select({
       id: cartItems.id,
@@ -30,7 +32,7 @@ export async function getCart(userId: string) {
     .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
     .innerJoin(products, eq(cartItems.productId, products.id))
     .innerJoin(stores, eq(products.storeId, stores.id))
-    .where(eq(cartItems.userId, userId))
+    .where(eq(cartItems.cartId, cartId))
     .orderBy(cartItems.createdAt);
 
   const totalCents = rows.reduce((sum, row) => sum + row.priceCents * row.quantity, 0);
@@ -39,7 +41,11 @@ export async function getCart(userId: string) {
   return { items: rows, totalCents, itemCount };
 }
 
-export async function cartCount(userId: string): Promise<number> {
-  const { itemCount } = await getCart(userId);
-  return itemCount;
+export async function cartCount(cartId: string | null): Promise<number> {
+  if (!cartId) return 0;
+  const rows = await getDb()
+    .select({ quantity: cartItems.quantity })
+    .from(cartItems)
+    .where(eq(cartItems.cartId, cartId));
+  return rows.reduce((sum, row) => sum + row.quantity, 0);
 }

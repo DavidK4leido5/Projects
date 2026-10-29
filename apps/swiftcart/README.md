@@ -119,6 +119,19 @@ dashboard outward:
 This is why product actions return results rather than redirecting: a redirect would finish the
 navigation before the optimistic row could settle. Any new mutation should follow the same shape.
 
+## Shopping without an account
+
+Browsing, cart, and checkout never require signing in.
+
+- A cart belongs to a `carts` row, not a person. Signed-in visitors are found by `user_id`; guests by
+  a `swiftcart_cart` httpOnly cookie holding a random token, valid 30 days.
+- On sign-in the guest cart merges into the account cart: quantities add per variant, capped at stock,
+  and the guest cart is deleted.
+- Orders accept guests. `user_id` is nullable, the delivery details are snapshotted onto the order,
+  and every order gets an `access_token` used as its receipt link (`/orders/<token>`).
+- A signed-in shopper with a saved address sees one line and a Place order button. Without one, the
+  form appears once and the address is saved to `addresses` for next time.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial

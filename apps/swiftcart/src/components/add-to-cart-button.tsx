@@ -1,19 +1,42 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui";
 import { addToCart } from "@/features/cart/actions";
 
-type AddToCartButtonProps = {
+export function AddToCartButton({
+  variantId,
+  disabled,
+  className,
+}: {
   variantId: string;
   disabled?: boolean;
   className?: string;
-};
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
-export function AddToCartButton({ variantId, disabled, className }: AddToCartButtonProps) {
+  function add() {
+    setError(null);
+    start(async () => {
+      const result = await addToCart(variantId);
+      if (!result.ok) setError(result.error);
+      router.refresh();
+    });
+  }
+
   return (
-    <form action={addToCart} className={className}>
-      <input type="hidden" name="variantId" value={variantId} />
-      <Button type="submit" disabled={disabled}>
-        Add to cart
+    <div className={className}>
+      <Button type="button" onClick={add} disabled={disabled || pending}>
+        {pending ? "Adding" : "Add to cart"}
       </Button>
-    </form>
+      {error ? (
+        <p role="alert" className="mt-2 text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
