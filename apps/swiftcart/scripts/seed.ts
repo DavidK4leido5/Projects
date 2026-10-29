@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import { getDb } from "../src/lib/db/index.js";
 import { cartItems, products, profiles, stores } from "../src/lib/db/schema.js";
 
@@ -104,12 +103,15 @@ async function ensureAuthUser(email: string, name: string): Promise<string> {
 
   if (response.ok && payload.user) return payload.user.id;
 
-  const existing = await getDb()
-    .select({ id: profiles.id })
-    .from(profiles)
-    .where(eq(profiles.email, email))
-    .limit(1);
-  if (existing[0]) return existing[0].id;
+  // Re-seeding: the identity already exists, so sign in with the seeded password
+  // to learn its id instead of creating a second account.
+  const signIn = await fetch(baseUrl() + "/sign-in/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: ORIGIN },
+    body: JSON.stringify({ email, password: PASSWORD }),
+  });
+  const signed = (await signIn.json()) as { user?: { id: string } };
+  if (signIn.ok && signed.user) return signed.user.id;
 
   throw new Error(
     "Could not create " + email + ": " + (payload.message ?? payload.code ?? response.status),
