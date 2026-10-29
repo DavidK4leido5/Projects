@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ZoomableImage } from "@/components/image-lightbox";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge, Button } from "@repo/ui";
@@ -91,6 +92,19 @@ export function ProductDetail({
   const hasSubValues = siblings.some((variant) => Object.keys(variant.options).length > 1);
   const visibleProperties = hasSubValues ? properties : properties.slice(0, 1);
 
+  /** Values that a real combination exists for, given what is already chosen. */
+  const valuesFor = (property: ProductProperty) => {
+    const index = properties.findIndex((entry) => entry.name === property.name);
+    const earlier = properties.slice(0, index);
+    return property.values.filter((value) =>
+      variants.some(
+        (variant) =>
+          variant.options[property.name] === value &&
+          earlier.every((entry) => variant.options[entry.name] === chosen[entry.name]),
+      ),
+    );
+  };
+
   const gallery = selected?.imageKey
     ? [selected.imageKey, ...images.filter((key) => key !== selected.imageKey)]
     : images;
@@ -109,14 +123,14 @@ export function ProductDetail({
     <div className="grid gap-8 md:grid-cols-2">
       <div className="flex flex-col gap-3">
         {current ? (
-          <Image
+          <ZoomableImage
             src={current}
             alt={name}
             width={1200}
             height={900}
             sizes="(min-width: 768px) 50vw, 100vw"
             priority
-            className="aspect-[4/3] w-full rounded-lg border border-border object-cover"
+            className="aspect-[4/3] w-full object-cover"
           />
         ) : (
           <div className="flex aspect-[4/3] w-full items-center justify-center rounded-lg bg-muted text-2xl text-muted-foreground">
@@ -179,7 +193,7 @@ export function ProductDetail({
           <div key={property.name} className="flex w-full flex-col gap-2">
             <span className="text-xs font-medium text-muted-foreground">{property.name}</span>
             <div className="flex flex-wrap gap-2">
-              {property.values.map((value) => {
+              {valuesFor(property).map((value) => {
                 const isChosen = chosen[property.name] === value;
                 const available = variants.some(
                   (variant) =>

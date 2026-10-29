@@ -167,7 +167,7 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
       )}
 
       <Sheet open={mode !== "closed"} onOpenChange={(open) => (open ? undefined : close())}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl">
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl">
           <SheetHeader className="border-b border-border px-6 py-5">
             <SheetTitle>{mode === "edit" ? "Edit item" : "Add item"}</SheetTitle>
             <SheetDescription>

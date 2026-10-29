@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { ImagePlus, Loader2, Plus, X } from "lucide-react";
+import { ChevronDown, ImagePlus, Loader2, Plus, X } from "lucide-react";
 import { Button, Checkbox } from "@repo/ui";
 import type { ProductProperty } from "@/lib/db/schema";
 
@@ -310,7 +310,7 @@ export function VariantFields({
             ) : null}
           </section>
 
-          <section className="flex flex-col gap-2">
+          <section className="flex flex-col gap-2 border-t border-border pt-3">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 2. Combinations
@@ -358,7 +358,7 @@ export function VariantFields({
                   {rows.map((row) => (
                     <tr key={row.id} className="border-t border-border">
                       {groups.map((group) => (
-                        <td key={group.id} className="px-1 py-2 sm:px-2">
+                        <td key={group.id} className="relative px-1 py-1.5 sm:px-2">
                           <select
                             aria-label={group.name}
                             value={row.picks[group.name] ?? ""}
@@ -367,7 +367,7 @@ export function VariantFields({
                                 picks: { ...row.picks, [group.name]: event.target.value },
                               })
                             }
-                            className="h-10 w-16 rounded-md border border-border bg-background px-1 text-sm sm:h-7 sm:w-28 sm:text-xs"
+                            className="h-9 w-24 appearance-none truncate rounded-md bg-transparent pr-4 text-sm font-medium hover:bg-muted/50 sm:h-7 sm:text-xs"
                           >
                             <option value="">none</option>
                             {group.values.map((value) => (
@@ -376,6 +376,7 @@ export function VariantFields({
                               </option>
                             ))}
                           </select>
+                          <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                         </td>
                       ))}
 
@@ -401,7 +402,7 @@ export function VariantFields({
                           aria-label="Variant SKU"
                           value={row.sku}
                           onChange={(event) => patchRow(row.id, { sku: event.target.value })}
-                          className="h-10 w-24 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
+                          className="h-10 w-20 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
                         />
                       </td>
                       <td className="px-1 py-2 sm:px-2">
