@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatMoney } from "@repo/shared";
-import { Button } from "@repo/ui";
 import { getProductBySlug } from "@/features/catalog/queries";
+import { AddToCartButton } from "@/components/add-to-cart-button";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -46,9 +46,7 @@ export default async function ProductPage({ params }: PageProps) {
           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">
             {product.description}
           </p>
-          <Button variant="secondary" disabled className="mt-4">
-            Checkout is out of scope for this demo
-          </Button>
+          <AddToCartButton productId={product.id} className="mt-4" />
         </div>
       </div>
     </main>

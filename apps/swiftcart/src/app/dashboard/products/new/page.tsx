@@ -1,9 +1,9 @@
 import { ProductForm } from "@/components/product-form";
 import { createProduct } from "@/features/products/actions";
-import { requireStore } from "@/lib/auth";
+import { requireStoreOwner } from "@/lib/auth/guards";
 
 export default async function NewProductPage() {
-  await requireStore();
+  await requireStoreOwner();
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-8">

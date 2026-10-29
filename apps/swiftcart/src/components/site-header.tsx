@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Button } from "@repo/ui";
-import { signOut } from "@/features/stores/actions";
-import { getCurrentStore } from "@/lib/auth";
+import { SignOutButton } from "@/components/sign-out-button";
+import { getActor } from "@/lib/auth/guards";
 
 export async function SiteHeader() {
-  const store = await getCurrentStore();
+  const actor = await getActor();
 
   return (
     <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
@@ -12,30 +12,40 @@ export async function SiteHeader() {
         <Link href="/" className="text-sm font-semibold tracking-tight">
           SwiftCart
         </Link>
-        <nav className="flex items-center gap-5 text-sm text-neutral-600">
+        <nav className="flex items-center gap-4 text-sm text-neutral-600">
           <Link href="/" className="transition-colors hover:text-neutral-900">
             Shop
           </Link>
-          {store ? (
-            <>
-              <Link href="/dashboard" className="transition-colors hover:text-neutral-900">
-                Dashboard
-              </Link>
-              <form action={signOut}>
-                <Button variant="ghost" type="submit" className="px-2 py-1">
-                  Sign out
-                </Button>
-              </form>
-            </>
-          ) : (
+
+          {actor.kind === "admin" ? (
+            <Link href="/admin" className="transition-colors hover:text-neutral-900">
+              Admin
+            </Link>
+          ) : null}
+
+          {actor.kind === "store" ? (
+            <Link href="/dashboard" className="transition-colors hover:text-neutral-900">
+              Dashboard
+            </Link>
+          ) : null}
+
+          {actor.kind === "user" ? (
+            <Link href="/cart" className="transition-colors hover:text-neutral-900">
+              Cart
+            </Link>
+          ) : null}
+
+          {actor.kind === "anonymous" ? (
             <>
               <Link href="/login" className="transition-colors hover:text-neutral-900">
                 Sign in
               </Link>
-              <Link href="/signup">
-                <Button className="px-3 py-1.5">Start selling</Button>
+              <Link href="/signup/store">
+                <Button className="px-3 py-1.5">Open a store</Button>
               </Link>
             </>
+          ) : (
+            <SignOutButton />
           )}
         </nav>
       </div>

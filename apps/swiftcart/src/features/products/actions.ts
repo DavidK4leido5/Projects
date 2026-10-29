@@ -3,7 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireStore } from "@/lib/auth";
+import { requireStoreOwner } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db";
 import { products } from "@/lib/db/schema";
 import type { FormState } from "@/lib/form";
@@ -44,7 +44,8 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
 }
 
 export async function createProduct(_prev: FormState, formData: FormData): Promise<FormState> {
-  const store = await requireStore();
+  const actor = await requireStoreOwner();
+  const store = actor.store;
   const input = parseProductForm(formData);
   if ("error" in input) return input;
 
@@ -60,7 +61,8 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
 }
 
 export async function updateProduct(_prev: FormState, formData: FormData): Promise<FormState> {
-  const store = await requireStore();
+  const actor = await requireStoreOwner();
+  const store = actor.store;
   const id = text(formData, "id");
   if (!id) return { error: "Missing product id." };
 
@@ -78,7 +80,8 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
 }
 
 export async function deleteProduct(formData: FormData): Promise<void> {
-  const store = await requireStore();
+  const actor = await requireStoreOwner();
+  const store = actor.store;
   const id = text(formData, "id");
   if (!id) return;
 

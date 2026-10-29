@@ -3,6 +3,7 @@ packages:
   - "packages/*"
 
 allowBuilds:
+  core-js: false
   esbuild: true
   sharp: true
 
@@ -31,6 +32,7 @@ catalog:
   "tsx": ^4.23.15
   "@aws-sdk/client-s3": ^3.1159.0
   server-only: ^0.0.1
+  "@neondatabase/auth": 0.7.0-beta
 
 minimumReleaseAgeExclude:
   - "@aws-sdk/checksums@3.1001.7"

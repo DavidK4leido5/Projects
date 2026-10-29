@@ -1,24 +1,86 @@
 "use client";
 
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
 import { Button } from "@repo/ui";
-import { emptyFormState, type FormState } from "@/lib/form";
+import { provisionAccount } from "@/features/auth/actions";
+import { authClient } from "@/lib/auth/client";
+
+type Mode = "signin" | "signup-user" | "signup-store";
+
+const COPY: Record<Mode, { submit: string; busy: string }> = {
+  signin: { submit: "Sign in", busy: "Signing in..." },
+  "signup-user": { submit: "Create account", busy: "Creating account..." },
+  "signup-store": { submit: "Open store", busy: "Creating store..." },
+};
 
 const inputClass =
   "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none";
 
-type AuthFormProps = {
-  mode: "signin" | "signup";
-  action: (prev: FormState, formData: FormData) => Promise<FormState>;
-};
+export function AuthForm({ mode }: { mode: Mode }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isSignin = mode === "signin";
+  const isStore = mode === "signup-store";
 
-export function AuthForm({ mode, action }: AuthFormProps) {
-  const [state, formAction, pending] = useActionState(action, emptyFormState);
-  const isSignup = mode === "signup";
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    const displayName = String(form.get("name") ?? "").trim();
+    const storeName = String(form.get("storeName") ?? "").trim();
+
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (isStore && storeName.length < 2) {
+      setError("Store name must be at least 2 characters.");
+      return;
+    }
+
+    setPending(true);
+
+    if (isSignin) {
+      const result = await authClient.signIn.email({ email, password });
+      if (result.error) {
+        setError(result.error.message ?? "Email or password is incorrect.");
+        setPending(false);
+        return;
+      }
+    } else {
+      const name = isStore ? storeName : displayName;
+      const result = await authClient.signUp.email({ email, password, name });
+      if (result.error) {
+        setError(result.error.message ?? "Could not create the account.");
+        setPending(false);
+        return;
+      }
+
+      const provisioned = await provisionAccount({ mode: isStore ? "store" : "user", storeName });
+      if (!provisioned.ok) {
+        await authClient.signOut();
+        setError(provisioned.error);
+        setPending(false);
+        return;
+      }
+    }
+
+    router.push("/continue");
+    router.refresh();
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      {isSignup ? (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      {isStore ? (
         <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-800">
           Store name
           <input
@@ -28,6 +90,13 @@ export function AuthForm({ mode, action }: AuthFormProps) {
             autoComplete="organization"
             className={inputClass}
           />
+        </label>
+      ) : null}
+
+      {mode === "signup-user" ? (
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-neutral-800">
+          Name
+          <input name="name" type="text" required autoComplete="name" className={inputClass} />
         </label>
       ) : null}
 
@@ -42,26 +111,20 @@ export function AuthForm({ mode, action }: AuthFormProps) {
           name="password"
           type="password"
           required
-          minLength={isSignup ? 8 : undefined}
-          autoComplete={isSignup ? "new-password" : "current-password"}
+          minLength={8}
+          autoComplete={isSignin ? "current-password" : "new-password"}
           className={inputClass}
         />
       </label>
 
-      {state.error ? (
+      {error ? (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {state.error}
+          {error}
         </p>
       ) : null}
 
       <Button type="submit" disabled={pending} className="w-full">
-        {pending
-          ? isSignup
-            ? "Creating store..."
-            : "Signing in..."
-          : isSignup
-            ? "Create store"
-            : "Sign in"}
+        {pending ? COPY[mode].busy : COPY[mode].submit}
       </Button>
     </form>
   );

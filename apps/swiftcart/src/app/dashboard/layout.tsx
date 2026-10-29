@@ -1,23 +1,23 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { requireStore } from "@/lib/auth";
+import { requireStoreOwner } from "@/lib/auth/guards";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const store = await requireStore();
+  const actor = await requireStoreOwner();
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10">
-      <div className="flex flex-col gap-4 border-b border-neutral-200 pb-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{store.name}</h1>
+    <main className="mx-auto max-w-5xl px-4 py-10">
+      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-neutral-200 pb-4">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-semibold tracking-tight">{actor.store.name}</h1>
           <Link
-            href={`/stores/${store.slug}`}
-            className="text-sm text-neutral-600 underline-offset-4 hover:text-neutral-900 hover:underline"
+            href={"/stores/" + actor.store.slug}
+            className="text-sm text-neutral-600 underline-offset-4 hover:underline"
           >
-            /stores/{store.slug}
+            /stores/{actor.store.slug}
           </Link>
         </div>
-        <nav className="flex items-center gap-5 text-sm text-neutral-600">
+        <nav className="flex items-center gap-4 text-sm text-neutral-600">
           <Link href="/dashboard" className="transition-colors hover:text-neutral-900">
             Products
           </Link>
@@ -26,8 +26,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           </Link>
         </nav>
       </div>
-
-      {children}
+      <div className="pt-8">{children}</div>
     </main>
   );
 }

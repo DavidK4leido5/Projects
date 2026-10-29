@@ -3,11 +3,11 @@ import { formatDate, formatMoney } from "@repo/shared";
 import { Button, Card, CardTitle } from "@repo/ui";
 import { listStoreProducts } from "@/features/catalog/queries";
 import { deleteProduct } from "@/features/products/actions";
-import { requireStore } from "@/lib/auth";
+import { requireStoreOwner } from "@/lib/auth/guards";
 
 export default async function DashboardPage() {
-  const store = await requireStore();
-  const items = await listStoreProducts(store.id);
+  const actor = await requireStoreOwner();
+  const items = await listStoreProducts(actor.store.id);
   const catalogueValue = items.reduce((total, item) => total + item.priceCents, 0);
 
   return (
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
                   <td className="px-5 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <Link
-                        href={`/dashboard/products/${item.id}/edit`}
+                        href={"/dashboard/products/" + item.id + "/edit"}
                         className="rounded-md px-2 py-1 font-medium text-neutral-900 underline-offset-4 hover:bg-neutral-100"
                       >
                         Edit

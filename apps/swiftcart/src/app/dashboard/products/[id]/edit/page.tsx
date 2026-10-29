@@ -3,12 +3,12 @@ import { Button } from "@repo/ui";
 import { ProductForm } from "@/components/product-form";
 import { listStoreProducts } from "@/features/catalog/queries";
 import { deleteProduct, updateProduct } from "@/features/products/actions";
-import { requireStore } from "@/lib/auth";
+import { requireStoreOwner } from "@/lib/auth/guards";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const store = await requireStore();
-  const items = await listStoreProducts(store.id);
+  const actor = await requireStoreOwner();
+  const items = await listStoreProducts(actor.store.id);
   const product = items.find((item) => item.id === id);
   if (!product) notFound();
 

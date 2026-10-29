@@ -1,32 +1,24 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthForm } from "@/components/auth-form";
-import { signUp } from "@/features/stores/actions";
 
-export const metadata: Metadata = {
-  title: "Open a store",
-};
+export const metadata = { title: "Sign up" };
 
 export default function SignupPage() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Open a store</h1>
-        <p className="text-sm text-neutral-600">
-          Set up your storefront and start listing what you sell.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
+        <p className="text-sm text-neutral-600">Save a cart and come back to it later.</p>
       </header>
 
-      <AuthForm mode="signup" action={signUp} />
+      <AuthForm mode="signup-user" />
 
       <p className="text-sm text-neutral-600">
-        Already have a store?{" "}
-        <Link
-          href="/login"
-          className="font-medium text-neutral-900 underline-offset-4 hover:underline"
-        >
-          Sign in
+        Selling something?{" "}
+        <Link href="/signup/store" className="underline underline-offset-4">
+          Open a store
         </Link>
+        .
       </p>
     </div>
   );

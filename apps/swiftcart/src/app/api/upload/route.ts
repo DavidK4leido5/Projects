@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getCurrentStore } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth/session";
 import { storage } from "@/lib/storage";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -12,8 +12,8 @@ const EXTENSIONS: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const store = await getCurrentStore();
-  if (!store) return Response.json({ error: "Not signed in." }, { status: 401 });
+  const user = await getAuthUser();
+  if (!user) return Response.json({ error: "Not signed in." }, { status: 401 });
 
   const form = await request.formData();
   const file = form.get("file");
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Image must be under 5 MB." }, { status: 413 });
   }
 
-  const key = `products/${store.id}/${randomUUID()}.${extension}`;
+  const key = `products/${user.id}/${randomUUID()}.${extension}`;
   await storage.put(key, new Uint8Array(await file.arrayBuffer()), file.type);
 
   return Response.json({ key, url: `/api/images/${key}` });
