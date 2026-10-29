@@ -332,14 +332,14 @@ export function VariantFields({
                 <thead className="bg-muted/40 text-left text-muted-foreground">
                   <tr>
                     {groups.map((group) => (
-                      <th key={group.id} className="px-2 py-2 font-medium">
+                      <th key={group.id} className="px-1 py-2 font-medium sm:px-2">
                         {group.name || "Group"}
                       </th>
                     ))}
-                    <th className="px-2 py-2 font-medium">Price</th>
-                    <th className="px-2 py-2 font-medium">Stock</th>
+                    <th className="px-1 py-2 font-medium sm:px-2">Price</th>
+                    <th className="px-1 py-2 font-medium sm:px-2">Stock</th>
                     <th className="hidden px-2 py-2 font-medium sm:table-cell">SKU</th>
-                    <th className="px-2 py-2 font-medium">Preview</th>
+                    <th className="px-1 py-2 font-medium sm:px-2">Preview</th>
                     <th className="w-8 px-2 py-2" />
                   </tr>
                 </thead>
@@ -358,7 +358,7 @@ export function VariantFields({
                   {rows.map((row) => (
                     <tr key={row.id} className="border-t border-border">
                       {groups.map((group) => (
-                        <td key={group.id} className="px-2 py-2">
+                        <td key={group.id} className="px-1 py-2 sm:px-2">
                           <select
                             aria-label={group.name}
                             value={row.picks[group.name] ?? ""}
@@ -367,7 +367,7 @@ export function VariantFields({
                                 picks: { ...row.picks, [group.name]: event.target.value },
                               })
                             }
-                            className="h-10 w-28 rounded-md border border-border bg-background px-1 text-sm sm:h-7 sm:text-xs"
+                            className="h-10 w-16 rounded-md border border-border bg-background px-1 text-sm sm:h-7 sm:w-28 sm:text-xs"
                           >
                             <option value="">none</option>
                             {group.values.map((value) => (
@@ -379,21 +379,21 @@ export function VariantFields({
                         </td>
                       ))}
 
-                      <td className="px-2 py-2">
+                      <td className="px-1 py-2 sm:px-2">
                         <input
                           aria-label="Variant price"
                           value={row.price}
                           onChange={(event) => patchRow(row.id, { price: event.target.value })}
                           placeholder="base"
-                          className="h-10 w-20 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
+                          className="h-10 w-14 rounded-md border border-border px-2 text-sm sm:h-7 sm:w-20 sm:text-xs"
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-1 py-2 sm:px-2">
                         <input
                           aria-label="Variant stock"
                           value={row.stock}
                           onChange={(event) => patchRow(row.id, { stock: event.target.value })}
-                          className="h-10 w-16 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
+                          className="h-10 w-12 rounded-md border border-border px-2 text-sm sm:h-7 sm:w-16 sm:text-xs"
                         />
                       </td>
                       <td className="hidden px-2 py-2 sm:table-cell">
@@ -404,7 +404,7 @@ export function VariantFields({
                           className="h-10 w-24 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-1 py-2 sm:px-2">
                         <RowImage
                           value={row.imageKey}
                           busy={busy === row.id}
@@ -412,7 +412,7 @@ export function VariantFields({
                           onClear={() => patchRow(row.id, { imageKey: "" })}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-1 py-2 sm:px-2">
                         <button
                           type="button"
                           aria-label="Remove combination"
