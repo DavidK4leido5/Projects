@@ -25,6 +25,9 @@ coverage/
 # generated
 next-env.d.ts
 
+# vercel project link (project ids, not source)
+.vercel
+
 # editors / os
 .DS_Store
 Thumbs.db
