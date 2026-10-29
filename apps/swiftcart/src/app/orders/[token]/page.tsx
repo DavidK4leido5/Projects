@@ -41,7 +41,9 @@ async function OrderPageBody({ params }: { params: Promise<{ token: string }> })
           Back to the shop
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-mono text-xl font-semibold tracking-tight">{order.id.slice(0, 8)}</h1>
+          <h1 className="font-mono text-xl font-semibold tracking-tight">
+            {order.publicRef ?? order.id.slice(0, 8)}
+          </h1>
           <span
             className={
               "inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize " +

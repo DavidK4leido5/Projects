@@ -132,6 +132,12 @@ Browsing, cart, and checkout never require signing in.
 - A signed-in shopper with a saved address sees one line and a Place order button. Without one, the
   form appears once and the address is saved to `addresses` for next time.
 
+## Bulk product import
+
+`POST /api/admin/products` takes a batch of products with image URLs and runs each image through the
+same storage and Cloudinary path as a manual upload. It requires a signed-in store or admin session.
+Used to fill the demo catalogue; not part of the shopper surface.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial
