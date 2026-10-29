@@ -19,12 +19,26 @@ async function DashboardLayoutBody({ children }: { children: ReactNode }) {
             /stores/{actor.store.slug}
           </Link>
         </div>
-        <Link
-          href="/dashboard"
-          className="text-sm text-neutral-600 transition-colors hover:text-neutral-900"
-        >
-          Items
-        </Link>
+        <nav className="flex items-center gap-4">
+          <Link
+            href="/dashboard"
+            className="text-sm text-neutral-600 transition-colors hover:text-neutral-900"
+          >
+            Items
+          </Link>
+          <Link
+            href="/dashboard/inventory"
+            className="text-sm text-neutral-600 transition-colors hover:text-neutral-900"
+          >
+            Inventory
+          </Link>
+          <Link
+            href="/dashboard/orders"
+            className="text-sm text-neutral-600 transition-colors hover:text-neutral-900"
+          >
+            Orders
+          </Link>
+        </nav>
       </div>
       <div className="pt-8">{children}</div>
     </main>

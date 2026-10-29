@@ -1,13 +1,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { Button, Card, CardTitle } from "@repo/ui";
+import { storeOrderStats } from "@/app/admin/queries";
 import { CreateStoreForm, RenameStoreForm } from "@/components/admin-store-form";
 import { deleteStore } from "@/features/admin/actions";
 import { listStoresWithCounts } from "@/features/admin/queries";
 import { PageSkeleton } from "@/components/skeletons";
 
 async function AdminStoresPageBody() {
-  const stores = await listStoresWithCounts();
+  const [stores, orderStats] = await Promise.all([listStoresWithCounts(), storeOrderStats()]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -40,40 +41,52 @@ async function AdminStoresPageBody() {
                 <th scope="col" className="px-5 py-3 font-medium">
                   Products
                 </th>
+                <th scope="col" className="px-5 py-3 font-medium">
+                  Orders
+                </th>
+                <th scope="col" className="px-5 py-3 font-medium">
+                  Open slices
+                </th>
                 <th scope="col" className="px-5 py-3 text-right font-medium">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
-              {stores.map((store) => (
-                <tr key={store.id}>
-                  <td className="px-5 py-3">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-neutral-900">{store.name}</span>
-                      <Link
-                        href={"/stores/" + store.slug}
-                        className="text-xs text-neutral-500 transition-colors hover:text-neutral-900"
-                      >
-                        /stores/{store.slug}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-neutral-600">{store.ownerEmail}</td>
-                  <td className="px-5 py-3 text-neutral-600">{store.productCount}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <RenameStoreForm id={store.id} name={store.name} />
-                      <form action={deleteStore}>
-                        <input type="hidden" name="id" value={store.id} />
-                        <Button variant="ghost" type="submit" className="px-2 py-1">
-                          Delete
-                        </Button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {stores.map((store) => {
+                const activity = orderStats.get(store.id);
+
+                return (
+                  <tr key={store.id}>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-neutral-900">{store.name}</span>
+                        <Link
+                          href={"/stores/" + store.slug}
+                          className="text-xs text-neutral-500 transition-colors hover:text-neutral-900"
+                        >
+                          /stores/{store.slug}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-neutral-600">{store.ownerEmail}</td>
+                    <td className="px-5 py-3 text-neutral-600">{store.productCount}</td>
+                    <td className="px-5 py-3 text-neutral-600">{activity?.orders ?? 0}</td>
+                    <td className="px-5 py-3 text-neutral-600">{activity?.openSlices ?? 0}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <RenameStoreForm id={store.id} name={store.name} />
+                        <form action={deleteStore}>
+                          <input type="hidden" name="id" value={store.id} />
+                          <Button variant="ghost" type="submit" className="px-2 py-1">
+                            Delete
+                          </Button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </Card>

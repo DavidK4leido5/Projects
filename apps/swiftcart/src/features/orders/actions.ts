@@ -1,11 +1,14 @@
 "use server";
 
 import { and, eq, gte, sql } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { updateTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import {
   addresses,
   cartItems,
+  orderEvents,
+  orderFulfilments,
   orderItems,
   orders,
   productVariants,
@@ -17,7 +20,8 @@ import { getCartId } from "@/lib/cart";
 import { getCart } from "@/features/cart/queries";
 import { tags } from "@/lib/cache";
 
-export type PlaceOrderResult = { ok: true; token: string } | { ok: false; error: string };
+export type PlaceOrderResult =
+  { ok: true; token: string; ref: string } | { ok: false; error: string };
 
 /** The delivery snapshot an order is created from. */
 type Delivery = {
@@ -150,9 +154,18 @@ export async function placeOrder(formData: FormData): Promise<PlaceOrderResult> 
       .where(eq(products.id, item.productId));
   }
 
+  const storeByProduct = new Map<string, string>();
+  const productRows = await db
+    .select({ id: products.id, storeId: products.storeId })
+    .from(products);
+  for (const row of productRows) storeByProduct.set(row.id, row.storeId);
+
+  const publicRef = "SC-" + randomBytes(4).toString("hex").toUpperCase();
+
   const inserted = await db
     .insert(orders)
     .values({
+      publicRef,
       userId: actor.kind === "anonymous" ? null : actor.profile.id,
       customerEmail: actor.kind === "anonymous" ? null : actor.profile.email,
       customerName: delivery.fullName,
@@ -173,6 +186,7 @@ export async function placeOrder(formData: FormData): Promise<PlaceOrderResult> 
   await db.insert(orderItems).values(
     cart.items.map((item) => ({
       orderId: order.id,
+      storeId: storeByProduct.get(item.productId) ?? null,
       productId: item.productId,
       variantId: item.variantId,
       optionSummary: summarise(item.variantOptions),
@@ -183,11 +197,38 @@ export async function placeOrder(formData: FormData): Promise<PlaceOrderResult> 
     })),
   );
 
+  const stores = [
+    ...new Set(
+      cart.items
+        .map((item) => storeByProduct.get(item.productId))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  if (stores.length > 0) {
+    await db
+      .insert(orderFulfilments)
+      .values(stores.map((storeId) => ({ orderId: order.id, storeId, status: "processing" })))
+      .onConflictDoNothing();
+
+    await db.insert(orderEvents).values(
+      stores.map((storeId) => ({
+        orderId: order.id,
+        storeId,
+        actorId: actor.kind === "anonymous" ? null : actor.profile.id,
+        actorRole: actor.kind,
+        fromStatus: null,
+        toStatus: "processing",
+        note: "Order placed",
+      })),
+    );
+  }
+
   await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
 
   updateTag(tags.orders);
   updateTag(tags.products);
-  return { ok: true, token: order.accessToken };
+  return { ok: true, token: order.accessToken, ref: publicRef };
 }
 
 export async function setOrderStatus(formData: FormData): Promise<void> {

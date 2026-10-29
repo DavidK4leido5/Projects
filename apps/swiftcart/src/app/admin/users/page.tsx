@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { formatDate } from "@repo/shared";
 import { Card } from "@repo/ui";
+import { profileActivity } from "@/app/admin/queries";
 import { DeleteUserForm, RoleForm } from "@/components/admin-user-form";
 import { listProfiles } from "@/features/admin/queries";
 import { requireAdmin } from "@/lib/auth/guards";
@@ -15,7 +16,7 @@ const ROLE_STYLES: Record<string, string> = {
 
 async function AdminUsersPageBody() {
   const actor = await requireAdmin();
-  const profiles = await listProfiles();
+  const [profiles, activity] = await Promise.all([listProfiles(), profileActivity()]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,6 +48,12 @@ async function AdminUsersPageBody() {
                 </th>
                 <th scope="col" className="px-5 py-3 font-medium">
                   Store
+                </th>
+                <th scope="col" className="px-5 py-3 font-medium">
+                  Address
+                </th>
+                <th scope="col" className="px-5 py-3 font-medium">
+                  Orders
                 </th>
                 <th scope="col" className="px-5 py-3 font-medium">
                   Created
@@ -94,6 +101,12 @@ async function AdminUsersPageBody() {
                       ) : (
                         <span className="text-neutral-400">None</span>
                       )}
+                    </td>
+                    <td className="px-5 py-3 text-neutral-600">
+                      {activity.withAddress.has(profile.id) ? "Saved" : "None"}
+                    </td>
+                    <td className="px-5 py-3 text-neutral-600">
+                      {activity.orderCounts.get(profile.id) ?? 0}
                     </td>
                     <td className="px-5 py-3 text-neutral-600">{formatDate(profile.createdAt)}</td>
                     <td className="px-5 py-3">

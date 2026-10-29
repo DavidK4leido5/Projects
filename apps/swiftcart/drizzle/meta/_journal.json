@@ -71,6 +71,13 @@
       "when": 1793262508786,
       "tag": "0009_third_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793264668873,
+      "tag": "0010_burly_spencer_smythe",
+      "breakpoints": true
     }
   ]
 }

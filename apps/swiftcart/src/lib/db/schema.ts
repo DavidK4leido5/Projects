@@ -177,6 +177,7 @@ export const orders = pgTable(
     deliveryPostal: text("delivery_postal"),
     deliveryCountry: text("delivery_country"),
     accessToken: uuid("access_token").notNull().defaultRandom().unique(),
+    publicRef: text("public_ref"),
     status: text("status").notNull().default("placed"),
     totalCents: integer("total_cents").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -211,6 +212,40 @@ export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Store = typeof stores.$inferSelect;
+export const orderFulfilments = pgTable(
+  "order_fulfilments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("processing"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("order_fulfilments_order_store_idx").on(table.orderId, table.storeId)],
+);
+
+export const orderEvents = pgTable(
+  "order_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
+    actorId: text("actor_id").references(() => profiles.id, { onDelete: "set null" }),
+    actorRole: text("actor_role"),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("order_events_order_idx").on(table.orderId)],
+);
+
 export type Product = typeof products.$inferSelect;
 export type ProductImage = typeof productImages.$inferSelect;
 export type ProductVariant = typeof productVariants.$inferSelect;
