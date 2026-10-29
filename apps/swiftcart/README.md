@@ -37,11 +37,24 @@ Each item carries up to ten previews in `product_images`, ordered, with the firs
 go through `/api/upload`, so every preview lands in object storage and Cloudinary. Removing a preview,
 or deleting the item, removes the objects from both stores rather than orphaning them.
 
-Featuring an item requires two art-directed banners: a wide landscape for desktop and a portrait for
-mobile, both mandatory. The uploads accept a range rather than one exact size (desktop 1.6:1 to 3.4:1,
-mobile 0.45:1 to 0.7:1) because the hero centres and crops with `object-cover`, so any image composed
-for that shape lands gracefully. 5:2 (2500x1000) and 9:16 (1080x1920) are the shapes the band and the
-phone frame were designed around.
+### Hero banner standard
+
+| Slot    | Ratio | Reference upload | Accepted range  |
+| ------- | ----- | ---------------- | --------------- |
+| Desktop | 5:2   | 3264x1312        | 1.6:1 to 3.4:1  |
+| Mobile  | 9:16  | 1080x1920        | 0.45:1 to 0.7:1 |
+
+The band is `clamp(300px, 40vw, 640px)` tall. At `40vw` it is exactly 2.5:1, so 5:2 art fills it with
+no crop between roughly 750px and 1600px viewport width. Above 1600px the height cap engages, the band
+gets wider than the art, and `object-cover` trims the sides evenly. Phones show the 9:16 file in a 9:16
+frame, so that slot never crops.
+
+Both slots are mandatory while an item is featured, and both are validated in the browser before
+upload. The uploaded file is kept at full size; Cloudinary derives every delivered width.
+
+**Delivery.** The `next/image` loader requests the width the slot actually needs: `100vw` at the
+device pixel ratio. A 1440px-wide desktop asks for `w_1920` and a retina screen for `w_3840`, so the
+rendered image is never upscaled.
 
 ## Images
 

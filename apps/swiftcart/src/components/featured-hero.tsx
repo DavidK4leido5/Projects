@@ -58,7 +58,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
         which is why the required banner is 5:2 rather than 16:9: the artwork is
         authored for the band instead of being cropped into it.
       */}
-      <div className="relative h-[min(78vh,640px)] w-full sm:h-[clamp(300px,40vw,560px)]">
+      <div className="relative aspect-[9/16] w-full sm:aspect-auto sm:h-[clamp(300px,40vw,640px)]">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (
@@ -73,11 +73,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
               }
             >
               <picture>
-                <source
-                  media="(min-width: 640px)"
-                  srcSet={slide.wideSrcSet}
-                  sizes="(min-width: 1024px) 1024px, 100vw"
-                />
+                <source media="(min-width: 640px)" srcSet={slide.wideSrcSet} sizes="100vw" />
                 <img
                   src={slide.tallSrc}
                   srcSet={slide.tallSrcSet}
