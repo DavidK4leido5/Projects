@@ -1,11 +1,40 @@
 import Link from "next/link";
-import { Button } from "@repo/ui";
+import { Button, Skeleton } from "@repo/ui";
 import { CatalogFilters } from "@/components/catalog-filters";
-import { CatalogPagination } from "@/components/catalog-pagination";
 import { EmptyState } from "@/components/empty-state";
+import { Pagination } from "@/components/pagination";
 import { ProductCard } from "@/components/product-card";
+import { ResultsRegion } from "@/components/results-region";
 import { listStoreFacets, searchProducts } from "@/features/catalog/queries";
 import { SORT_OPTIONS } from "@/lib/search-params";
+
+const GRID_CLASS = "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4";
+
+/**
+ * Same cell padding, line heights, and button height as ProductCard, so the
+ * twelve cards that land after a page change do not move the pager.
+ */
+function ProductGridSkeleton({ count = 12 }: { count?: number }) {
+  return (
+    <div className={GRID_CLASS}>
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+          <Skeleton className="aspect-square w-full rounded-none" />
+          <div className="flex flex-col gap-1.5 p-3">
+            <Skeleton className="h-5 w-2/3" />
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-4 w-1/2" />
+            <div className="flex items-baseline justify-between gap-2 pt-2">
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+            <Skeleton className="mt-2 h-[30px] w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export type CatalogueSearch = {
   q?: string;
@@ -103,17 +132,25 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
       {catalog.items.length === 0 ? (
         <EmptyState description={emptyDescription} />
       ) : (
-        <div
+        <ResultsRegion
           id="catalogue-results"
-          className="mt-6 grid scroll-mt-24 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+          className="mt-6 scroll-mt-24"
+          skeleton={<ProductGridSkeleton count={12} />}
         >
-          {catalog.items.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+          <div className={GRID_CLASS}>
+            {catalog.items.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </ResultsRegion>
       )}
 
-      {catalog.pages > 1 ? <CatalogPagination page={catalog.page} pages={catalog.pages} /> : null}
+      <Pagination
+        page={catalog.page}
+        pages={catalog.pages}
+        scrollTargetId="catalogue-results"
+        className="mt-8 border-t border-neutral-200 pt-5"
+      />
 
       {!filtered && rail.length > 0 ? (
         <section className="mt-14">

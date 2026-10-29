@@ -61,6 +61,8 @@ export async function createStoreForUser(
 
   updateTag(tags.stores);
   updateTag(tags.products);
+  updateTag(tags.users);
+  updateTag(tags.user(profile.id));
   return { ok: true };
 }
 
@@ -98,6 +100,9 @@ export async function deleteStore(formData: FormData): Promise<void> {
 
   updateTag(tags.stores);
   updateTag(tags.products);
+  updateTag(tags.users);
+  updateTag(tags.user(store.ownerId));
+  updateTag(tags.orders);
 }
 
 export async function setUserRole(
@@ -117,18 +122,27 @@ export async function setUserRole(
   const profile = found[0];
   if (!profile) return { error: "User not found." };
 
+  let removedStore = false;
   if (role !== "store") {
     const owned = await db
       .select({ id: stores.id })
       .from(stores)
       .where(eq(stores.ownerId, userId))
       .limit(1);
-    if (owned[0]) await db.delete(stores).where(eq(stores.ownerId, userId));
+    if (owned[0]) {
+      await db.delete(stores).where(eq(stores.ownerId, userId));
+      removedStore = true;
+    }
   }
 
   await db.update(profiles).set({ role }).where(eq(profiles.id, userId));
-  updateTag(tags.stores);
-  updateTag(tags.products);
+  updateTag(tags.users);
+  updateTag(tags.user(userId));
+  if (removedStore) {
+    updateTag(tags.stores);
+    updateTag(tags.products);
+    updateTag(tags.orders);
+  }
   return { ok: true };
 }
 
@@ -145,6 +159,14 @@ export async function deleteUser(
   const db = getDb();
   // Local rows first: profiles cascades to stores, products, and cart items.
   await db.delete(profiles).where(eq(profiles.id, userId));
+
+  // The delete is final whether or not the hosted identity follows, so the
+  // reads that show this account drop it now.
+  updateTag(tags.users);
+  updateTag(tags.user(userId));
+  updateTag(tags.stores);
+  updateTag(tags.products);
+  updateTag(tags.orders);
 
   // Then the identity, which lives in the hosted service. Only an admin session
   // there can remove it, so a failure is reported rather than hidden.
@@ -174,8 +196,6 @@ export async function deleteUser(
     return { ok: true, warning: "Local account removed. The auth identity could not be reached." };
   }
 
-  updateTag(tags.stores);
-  updateTag(tags.products);
   return { ok: true };
 }
 

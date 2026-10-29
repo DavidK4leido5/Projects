@@ -1,13 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@repo/ui";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@repo/ui";
 
 type EntityDrawerProps = {
   open: boolean;

@@ -12,6 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@repo/ui";
+import { ResultsRegion } from "@/components/results-region";
+import { TableSkeleton } from "@/components/table-skeleton";
 import { updateVariantStock } from "@/features/store/inventory-actions";
 import type { StoreItem, StoreVariant } from "@/features/products/queries";
 import type { VariantOptions } from "@/lib/db/schema";
@@ -118,98 +120,109 @@ export function InventoryTable({ items }: { items: StoreItem[] }) {
         ))}
       </div>
 
-      {visible.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-5 py-10">
-          <p className="text-sm text-muted-foreground">
-            {items.length === 0
-              ? "Nothing in the catalogue yet. Add an item from the dashboard first."
-              : "No variants match this filter."}
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {visible.map((item) => (
-            <div key={item.id} className="overflow-hidden rounded-lg border border-border bg-card">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-4 py-3">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <h3 className="text-sm font-semibold">{item.name}</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {item.variants.length} variant{item.variants.length === 1 ? "" : "s"}
+      <ResultsRegion
+        id="inventory-results"
+        className="scroll-mt-24"
+        skeleton={<TableSkeleton rows={8} columns={3} variant="products" />}
+      >
+        {visible.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border px-5 py-10">
+            <p className="text-sm text-muted-foreground">
+              {items.length === 0
+                ? "Nothing in the catalogue yet. Add an item from the dashboard first."
+                : "No variants match this filter."}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {visible.map((item) => (
+              <div
+                key={item.id}
+                className="overflow-hidden rounded-lg border border-border bg-card"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-4 py-3">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <h3 className="text-sm font-semibold">{item.name}</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {item.variants.length} variant{item.variants.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {item.variants.reduce((total, variant) => total + stockOf(variant), 0)} in stock
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {item.variants.reduce((total, variant) => total + stockOf(variant), 0)} in stock
-                </span>
-              </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Variant</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {item.variants.length === 0 ? (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={3} className="text-sm text-muted-foreground">
-                        No variants yet. Add variations from the item editor.
-                      </TableCell>
+                      <TableHead>Variant</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead className="text-right">Stock</TableHead>
                     </TableRow>
-                  ) : null}
+                  </TableHeader>
+                  <TableBody>
+                    {item.variants.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-sm text-muted-foreground">
+                          No variants yet. Add variations from the item editor.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
 
-                  {item.variants.map((variant) => (
-                    <TableRow key={variant.id}>
-                      <TableCell className="font-medium">{optionLabel(variant.options)}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {variant.sku ?? "No SKU"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-end gap-1">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={MAX_STOCK}
-                            step={1}
-                            inputMode="numeric"
-                            disabled={pending}
-                            aria-label={
-                              "Stock for " + item.name + ", " + optionLabel(variant.options)
-                            }
-                            value={drafts[variant.id] ?? String(stockOf(variant))}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setDrafts((state) => ({ ...state, [variant.id]: value }));
-                              setErrors((state) => clearKey(state, variant.id));
-                            }}
-                            onBlur={(event) => commit(variant, event.currentTarget.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                event.currentTarget.blur();
+                    {item.variants.map((variant) => (
+                      <TableRow key={variant.id}>
+                        <TableCell className="font-medium">
+                          {optionLabel(variant.options)}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {variant.sku ?? "No SKU"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-end gap-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={MAX_STOCK}
+                              step={1}
+                              inputMode="numeric"
+                              disabled={pending}
+                              aria-label={
+                                "Stock for " + item.name + ", " + optionLabel(variant.options)
                               }
-                              if (event.key === "Escape") {
-                                setDrafts((state) => clearKey(state, variant.id));
-                              }
-                            }}
-                            className="h-8 w-24 text-right tabular-nums"
-                          />
-                          {errors[variant.id] ? (
-                            <p role="alert" className="text-right text-xs text-destructive">
-                              {errors[variant.id]}
-                            </p>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ))}
-        </div>
-      )}
+                              value={drafts[variant.id] ?? String(stockOf(variant))}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setDrafts((state) => ({ ...state, [variant.id]: value }));
+                                setErrors((state) => clearKey(state, variant.id));
+                              }}
+                              onBlur={(event) => commit(variant, event.currentTarget.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  event.currentTarget.blur();
+                                }
+                                if (event.key === "Escape") {
+                                  setDrafts((state) => clearKey(state, variant.id));
+                                }
+                              }}
+                              className="h-8 w-24 text-right tabular-nums"
+                            />
+                            {errors[variant.id] ? (
+                              <p role="alert" className="text-right text-xs text-destructive">
+                                {errors[variant.id]}
+                              </p>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))}
+          </div>
+        )}
+      </ResultsRegion>
     </section>
   );
 }

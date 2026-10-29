@@ -18,7 +18,10 @@ import {
 } from "@repo/ui";
 import type { AdminUser } from "@/app/admin/user-queries";
 import { RoleBadge, UserDrawer } from "@/components/admin/user-drawer";
+import { Pagination } from "@/components/pagination";
+import { ResultsRegion } from "@/components/results-region";
 import { RowMenu, type RowMenuItem } from "@/components/row-menu";
+import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { changeUserRole, removeUserAccount } from "@/features/admin/actions";
 import type { Role } from "@/lib/db/schema";
@@ -104,10 +107,6 @@ export function UsersTable({
     write(usersHref({ q, role: next, page: 1 }), false);
   }
 
-  function goToPage(next: number) {
-    write(usersHref({ q, role, page: next }), false);
-  }
-
   function clearFilters() {
     write(USERS_PATH, false);
   }
@@ -184,142 +183,121 @@ export function UsersTable({
 
       {notice && !selected && !confirm ? <p className="text-sm text-amber-700">{notice}</p> : null}
 
-      {users.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 px-5 py-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            {filtered ? "No users match this view." : "No users yet."}
-          </p>
-          {filtered ? (
-            <Button type="button" variant="link" size="sm" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          ) : null}
-        </Card>
-      ) : (
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th scope="col" className="px-4 py-2.5 font-medium">
-                    Name
-                  </th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">
-                    Email
-                  </th>
-                  <th scope="col" className="w-24 px-4 py-2.5 font-medium">
-                    Role
-                  </th>
-                  <th scope="col" className="w-32 px-4 py-2.5 font-medium">
-                    Created
-                  </th>
-                  <th scope="col" className="w-12 px-4 py-2.5 text-right font-medium">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {users.map((user) => {
-                  const isSelf = user.id === currentUserId;
-                  const roleItems: RowMenuItem[] = roles
-                    .filter((value) => value !== user.role)
-                    .map((value, index) => ({
-                      label: "Change role to " + value,
-                      icon: ROLE_ICONS[value],
-                      separatorBefore: index === 0,
-                      disabled: isSelf,
-                      onSelect: () => saveRole(user, value),
-                    }));
+      <ResultsRegion
+        id="admin-users-results"
+        skeleton={<TableSkeleton rows={Math.max(users.length, 1)} columns={5} />}
+      >
+        {users.length === 0 ? (
+          <Card className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              {filtered ? "No users match this view." : "No users yet."}
+            </p>
+            {filtered ? (
+              <Button type="button" variant="link" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : null}
+          </Card>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-border bg-muted/50 text-xs text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-4 py-2.5 font-medium">
+                      Name
+                    </th>
+                    <th scope="col" className="px-4 py-2.5 font-medium">
+                      Email
+                    </th>
+                    <th scope="col" className="w-24 px-4 py-2.5 font-medium">
+                      Role
+                    </th>
+                    <th scope="col" className="w-32 px-4 py-2.5 font-medium">
+                      Created
+                    </th>
+                    <th scope="col" className="w-12 px-4 py-2.5 text-right font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {users.map((user) => {
+                    const isSelf = user.id === currentUserId;
+                    const roleItems: RowMenuItem[] = roles
+                      .filter((value) => value !== user.role)
+                      .map((value, index) => ({
+                        label: "Change role to " + value,
+                        icon: ROLE_ICONS[value],
+                        separatorBefore: index === 0,
+                        disabled: isSelf,
+                        onSelect: () => saveRole(user, value),
+                      }));
 
-                  return (
-                    <tr
-                      key={user.id}
-                      tabIndex={0}
-                      onClick={() => openUser(user)}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        openUser(user);
-                      }}
-                      className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
-                    >
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-2 font-medium text-foreground">
-                          {user.name}
-                          {isSelf ? <Badge variant="secondary">you</Badge> : null}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                      <td className="px-4 py-3">
-                        <RoleBadge role={user.role} />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {user.joined}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end">
-                          <RowMenu
-                            label={"Actions for " + user.name}
-                            items={[
-                              {
-                                label: "View details",
-                                icon: <Eye />,
-                                onSelect: () => openUser(user),
-                              },
-                              ...roleItems,
-                              {
-                                label: "Delete account",
-                                icon: <Trash2 />,
-                                destructive: true,
-                                separatorBefore: true,
-                                disabled: isSelf,
-                                onSelect: () => {
-                                  setError(null);
-                                  setNotice(null);
-                                  setConfirm(user);
+                    return (
+                      <tr
+                        key={user.id}
+                        tabIndex={0}
+                        onClick={() => openUser(user)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          openUser(user);
+                        }}
+                        className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
+                      >
+                        <td className="px-4 py-3">
+                          <span className="flex items-center gap-2 font-medium text-foreground">
+                            {user.name}
+                            {isSelf ? <Badge variant="secondary">you</Badge> : null}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                        <td className="px-4 py-3">
+                          <RoleBadge role={user.role} />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                          {user.joined}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end">
+                            <RowMenu
+                              label={"Actions for " + user.name}
+                              items={[
+                                {
+                                  label: "View details",
+                                  icon: <Eye />,
+                                  onSelect: () => openUser(user),
                                 },
-                              },
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+                                ...roleItems,
+                                {
+                                  label: "Delete account",
+                                  icon: <Trash2 />,
+                                  destructive: true,
+                                  separatorBefore: true,
+                                  disabled: isSelf,
+                                  onSelect: () => {
+                                    setError(null);
+                                    setNotice(null);
+                                    setConfirm(user);
+                                  },
+                                },
+                              ]}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </ResultsRegion>
 
-      {pages > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs tabular-nums text-muted-foreground">
-            Page {page} of {pages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pending || page <= 1}
-              onClick={() => goToPage(page - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pending || page >= pages}
-              onClick={() => goToPage(page + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <Pagination page={page} pages={pages} scrollTargetId="admin-users-results" />
 
       <UserDrawer
         user={selected}

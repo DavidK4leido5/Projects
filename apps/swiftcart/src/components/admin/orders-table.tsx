@@ -21,7 +21,10 @@ import {
 import type { AdminOrderRow, AdminOrderSliceRow } from "@/app/admin/order-queries";
 import { EntityDrawer } from "@/components/entity-drawer";
 import { FulfilmentControls } from "@/components/fulfilment-controls";
+import { Pagination } from "@/components/pagination";
+import { ResultsRegion } from "@/components/results-region";
 import { RowMenu } from "@/components/row-menu";
+import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { addOrderNote, setFulfilmentStatus } from "@/features/orders/tracking-actions";
 import { orderStatus } from "@/lib/order-rollup";
@@ -195,183 +198,164 @@ export function OrdersTable({
         </p>
       ) : null}
 
-      {rows.length === 0 ? (
-        <Card className="flex flex-col items-center gap-2 px-5 py-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            {filtered
-              ? "No orders match this view."
-              : page > 1
-                ? "Nothing on this page."
-                : "No orders have been placed yet."}
-          </p>
-          {filtered ? (
-            <Button type="button" size="sm" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          ) : page > 1 ? (
-            <Button type="button" size="sm" onClick={() => goToPage(1)}>
-              Back to page 1
-            </Button>
-          ) : null}
-        </Card>
-      ) : (
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th scope="col" className="w-28 px-3 py-2 font-medium">
-                    Reference
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    Customer
-                  </th>
-                  <th scope="col" className="w-24 px-3 py-2 font-medium">
-                    Date
-                  </th>
-                  <th scope="col" className="w-24 px-3 py-2 text-right font-medium">
-                    Total
-                  </th>
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    Fulfilment
-                  </th>
-                  <th scope="col" className="w-28 px-3 py-2 font-medium">
-                    Status
-                  </th>
-                  <th scope="col" className="w-12 px-3 py-2 text-right font-medium">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((row) => {
-                  const canAdvance = row.slices.some((slice) => nextStatus(slice.status) !== null);
-                  const cancellable = row.slices.filter((slice) => slice.status === "processing");
+      <ResultsRegion
+        id="admin-orders-results"
+        skeleton={<TableSkeleton rows={Math.max(rows.length, 1)} columns={7} />}
+      >
+        {rows.length === 0 ? (
+          <Card className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              {filtered
+                ? "No orders match this view."
+                : page > 1
+                  ? "Nothing on this page."
+                  : "No orders have been placed yet."}
+            </p>
+            {filtered ? (
+              <Button type="button" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : page > 1 ? (
+              <Button type="button" size="sm" onClick={() => goToPage(1)}>
+                Back to page 1
+              </Button>
+            ) : null}
+          </Card>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-border bg-muted/50 text-xs text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="w-28 px-3 py-2 font-medium">
+                      Reference
+                    </th>
+                    <th scope="col" className="px-3 py-2 font-medium">
+                      Customer
+                    </th>
+                    <th scope="col" className="w-24 px-3 py-2 font-medium">
+                      Date
+                    </th>
+                    <th scope="col" className="w-24 px-3 py-2 text-right font-medium">
+                      Total
+                    </th>
+                    <th scope="col" className="px-3 py-2 font-medium">
+                      Fulfilment
+                    </th>
+                    <th scope="col" className="w-28 px-3 py-2 font-medium">
+                      Status
+                    </th>
+                    <th scope="col" className="w-12 px-3 py-2 text-right font-medium">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {rows.map((row) => {
+                    const canAdvance = row.slices.some(
+                      (slice) => nextStatus(slice.status) !== null,
+                    );
+                    const cancellable = row.slices.filter((slice) => slice.status === "processing");
 
-                  return (
-                    <tr
-                      key={row.id}
-                      tabIndex={0}
-                      onClick={() => setOpenId(row.id)}
-                      onKeyDown={(event) => {
-                        if (event.target !== event.currentTarget) return;
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        setOpenId(row.id);
-                      }}
-                      className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
-                    >
-                      <td className="px-3 py-2.5">
-                        <Link
-                          href={"/track/" + row.token}
-                          onClick={(event) => event.stopPropagation()}
-                          title={"Track " + (row.ref ?? row.token)}
-                          className="font-mono text-xs text-foreground underline-offset-4 hover:underline"
-                        >
-                          {row.ref ?? row.token.slice(0, 8)}
-                        </Link>
-                      </td>
+                    return (
+                      <tr
+                        key={row.id}
+                        tabIndex={0}
+                        onClick={() => setOpenId(row.id)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          setOpenId(row.id);
+                        }}
+                        className="cursor-pointer transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
+                      >
+                        <td className="px-3 py-2.5">
+                          <Link
+                            href={"/track/" + row.token}
+                            onClick={(event) => event.stopPropagation()}
+                            title={"Track " + (row.ref ?? row.token)}
+                            className="font-mono text-xs text-foreground underline-offset-4 hover:underline"
+                          >
+                            {row.ref ?? row.token.slice(0, 8)}
+                          </Link>
+                        </td>
 
-                      <td className="px-3 py-2.5">
-                        <div
-                          className="max-w-56 truncate text-muted-foreground"
-                          title={customerTitle(row)}
-                        >
-                          {customerLabel(row)}
-                        </div>
-                      </td>
+                        <td className="px-3 py-2.5">
+                          <div
+                            className="max-w-56 truncate text-muted-foreground"
+                            title={customerTitle(row)}
+                          >
+                            {customerLabel(row)}
+                          </div>
+                        </td>
 
-                      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
-                        {row.placedOn}
-                      </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                          {row.placedOn}
+                        </td>
 
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
-                        {formatMoney(row.totalCents)}
-                      </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
+                          {formatMoney(row.totalCents)}
+                        </td>
 
-                      <td className="px-3 py-2.5">
-                        <FulfilmentSummary slices={row.slices} />
-                      </td>
+                        <td className="px-3 py-2.5">
+                          <FulfilmentSummary slices={row.slices} />
+                        </td>
 
-                      <td className="px-3 py-2.5">
-                        <StatusBadge status={row.status} />
-                      </td>
+                        <td className="px-3 py-2.5">
+                          <StatusBadge status={row.status} />
+                        </td>
 
-                      <td className="px-3 py-2.5 text-right">
-                        <div className="flex justify-end">
-                          <RowMenu
-                            label={"Actions for order " + (row.ref ?? row.token)}
-                            items={[
-                              {
-                                label: "Advance fulfilment",
-                                icon: <ArrowRight />,
-                                onSelect: () => advance(row),
-                                disabled: !canAdvance,
-                              },
-                              {
-                                label: "Cancel slice",
-                                icon: <Ban />,
-                                destructive: true,
-                                onSelect: () => {
-                                  setError(null);
-                                  setCancelFor(row);
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="flex justify-end">
+                            <RowMenu
+                              label={"Actions for order " + (row.ref ?? row.token)}
+                              items={[
+                                {
+                                  label: "Advance fulfilment",
+                                  icon: <ArrowRight />,
+                                  onSelect: () => advance(row),
+                                  disabled: !canAdvance,
                                 },
-                                disabled: cancellable.length === 0,
-                              },
-                              {
-                                label: "Add note",
-                                icon: <StickyNote />,
-                                onSelect: () => {
-                                  setError(null);
-                                  setNoteFor(row);
+                                {
+                                  label: "Cancel slice",
+                                  icon: <Ban />,
+                                  destructive: true,
+                                  onSelect: () => {
+                                    setError(null);
+                                    setCancelFor(row);
+                                  },
+                                  disabled: cancellable.length === 0,
                                 },
-                              },
-                              {
-                                label: "Open tracker",
-                                icon: <ExternalLink />,
-                                onSelect: () => router.push("/track/" + row.token),
-                                separatorBefore: true,
-                              },
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+                                {
+                                  label: "Add note",
+                                  icon: <StickyNote />,
+                                  onSelect: () => {
+                                    setError(null);
+                                    setNoteFor(row);
+                                  },
+                                },
+                                {
+                                  label: "Open tracker",
+                                  icon: <ExternalLink />,
+                                  onSelect: () => router.push("/track/" + row.token),
+                                  separatorBefore: true,
+                                },
+                              ]}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </ResultsRegion>
 
-      {pages > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs tabular-nums text-muted-foreground">
-            Page {page} of {pages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pending || page <= 1}
-              onClick={() => goToPage(page - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pending || page >= pages}
-              onClick={() => goToPage(page + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <Pagination page={page} pages={pages} scrollTargetId="admin-orders-results" />
 
       <EntityDrawer
         open={openRow !== null}

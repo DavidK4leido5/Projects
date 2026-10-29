@@ -1,7 +1,9 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
 import { and, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { lifetimes, tags } from "@/lib/cache";
 import { orderFulfilments, orderItems, orders, stores } from "@/lib/db/schema";
 import { orderStatus } from "@/lib/order-rollup";
 import type { SliceStatus } from "@/lib/order-status";
@@ -100,6 +102,11 @@ export async function listAdminOrders({
   status: OrderStatusFilter;
   page: number;
 }): Promise<AdminOrderPage> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.orders);
+  cacheTag(tags.stores);
+
   const db = getDb();
   const current = Math.max(1, Math.trunc(page) || 1);
   const conditions: SQL[] = [];

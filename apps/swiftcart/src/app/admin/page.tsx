@@ -30,7 +30,7 @@ async function AdminPageBody() {
   const openStatuses = new Set(metrics.openSlices.map((slice) => slice.status));
   const openSliceCount = metrics.openSlices.reduce((total, slice) => total + slice.count, 0);
   let openOrders = 0;
-  for (const slices of slicesByOrder.values()) {
+  for (const slices of Object.values(slicesByOrder)) {
     if (slices.some((slice) => openStatuses.has(slice.status))) openOrders += 1;
   }
 
@@ -50,13 +50,13 @@ async function AdminPageBody() {
     {
       label: "Users",
       value: overview.users,
-      context: activity.orderCounts.size + " with order history",
+      context: Object.keys(activity.orderCounts).length + " with order history",
       href: "/admin/users",
     },
     {
       label: "Stores",
       value: overview.stores,
-      context: storeStats.size + " with order traffic",
+      context: Object.keys(storeStats).length + " with order traffic",
       href: "/admin/stores",
     },
     {

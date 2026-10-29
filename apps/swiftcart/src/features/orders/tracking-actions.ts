@@ -80,6 +80,8 @@ export async function setFulfilmentStatus(
         .set({ stock: sql`${productVariants.stock} + ${line.quantity}` })
         .where(eq(productVariants.id, line.variantId));
     }
+    // The stock coming back changes what shoppers can buy.
+    updateTag(tags.products);
   }
 
   await db.insert(orderEvents).values({
@@ -93,6 +95,7 @@ export async function setFulfilmentStatus(
   });
 
   updateTag(tags.orders);
+  updateTag(tags.order(order.id));
   revalidatePath("/track");
   revalidatePath("/dashboard/orders");
   revalidatePath("/admin/orders");
@@ -124,6 +127,7 @@ export async function addOrderNote(token: string, note: string): Promise<TrackRe
     note: note.trim(),
   });
 
+  updateTag(tags.order(order.id));
   revalidatePath("/track");
   return { ok: true };
 }

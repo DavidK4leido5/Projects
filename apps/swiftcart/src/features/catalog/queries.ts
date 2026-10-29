@@ -151,6 +151,8 @@ export async function listStoreFacets() {
   "use cache";
   cacheLife(lifetimes.catalogue);
   cacheTag(tags.stores);
+  // productCount moves when products are added or removed.
+  cacheTag(tags.products);
 
   return getDb()
     .select({

@@ -11,6 +11,10 @@ export const tags = {
   featured: "featured",
   orders: "orders",
   order: (id: string) => "order:" + id,
+  users: "users",
+  user: (id: string) => "user:" + id,
+  inventory: (storeId: string) => "inventory:" + storeId,
+  trackers: "trackers",
 } as const;
 
 /** Lifetimes, in the vocabulary Next understands. */

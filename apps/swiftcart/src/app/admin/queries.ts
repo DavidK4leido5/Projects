@@ -1,11 +1,31 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
 import { eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { addresses, orderFulfilments, orderItems, orders, products, stores } from "@/lib/db/schema";
+import { lifetimes, tags } from "@/lib/cache";
+import { listStoresWithCounts } from "@/features/admin/queries";
 
 /** Product stock at or below this is treated as low. */
 export const LOW_STOCK_THRESHOLD = 5;
+
+/** The store roster is small enough to page in memory. */
+export const STORES_PER_PAGE = 20;
+
+/**
+ * The admin store roster. One row per store account, so it changes only when a
+ * store does; the page slices the cached list by URL.
+ *
+ * ponytail: cached full read, sliced by page. Move to a paged query if the
+ * roster grows past a few hundred stores.
+ */
+export async function listAdminStores() {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.stores);
+  return listStoresWithCounts();
+}
 
 export type AdminOrderSlice = {
   storeId: string;
@@ -15,7 +35,12 @@ export type AdminOrderSlice = {
 };
 
 /** Every store's slice of every order, keyed by order id. */
-export async function adminOrderSlices(): Promise<Map<string, AdminOrderSlice[]>> {
+export async function adminOrderSlices(): Promise<Record<string, AdminOrderSlice[]>> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.orders);
+  cacheTag(tags.stores);
+
   const db = getDb();
   const [slices, itemRows] = await Promise.all([
     db
@@ -53,7 +78,7 @@ export async function adminOrderSlices(): Promise<Map<string, AdminOrderSlice[]>
     });
     byOrder.set(slice.orderId, list);
   }
-  return byOrder;
+  return Object.fromEntries(byOrder);
 }
 
 export type AdminMetrics = {
@@ -65,6 +90,11 @@ export type AdminMetrics = {
 
 /** The daily pulse an operator needs, beside the existing totals. */
 export async function adminMetrics(): Promise<AdminMetrics> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.orders);
+  cacheTag(tags.products);
+
   const db = getDb();
   const [totals, today, sliceRows, lowStock] = await Promise.all([
     db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(orders),
@@ -100,7 +130,11 @@ export async function adminMetrics(): Promise<AdminMetrics> {
 export type StoreOrderStats = { orders: number; openSlices: number };
 
 /** How much order traffic each store is carrying right now. */
-export async function storeOrderStats(): Promise<Map<string, StoreOrderStats>> {
+export async function storeOrderStats(): Promise<Record<string, StoreOrderStats>> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.orders);
+
   const rows = await getDb()
     .select({
       storeId: orderFulfilments.storeId,
@@ -117,16 +151,21 @@ export async function storeOrderStats(): Promise<Map<string, StoreOrderStats>> {
   for (const row of rows) {
     stats.set(row.storeId, { orders: row.orders, openSlices: row.openSlices });
   }
-  return stats;
+  return Object.fromEntries(stats);
 }
 
 export type ProfileActivity = {
-  withAddress: Set<string>;
-  orderCounts: Map<string, number>;
+  withAddress: string[];
+  orderCounts: Record<string, number>;
 };
 
 /** A profile's saved address and order history, without loading either. */
 export async function profileActivity(): Promise<ProfileActivity> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.users);
+  cacheTag(tags.orders);
+
   const db = getDb();
   const [addressRows, orderRows] = await Promise.all([
     db.select({ profileId: addresses.profileId }).from(addresses),
@@ -137,10 +176,12 @@ export async function profileActivity(): Promise<ProfileActivity> {
       .groupBy(orders.userId),
   ]);
 
-  const withAddress = new Set(addressRows.map((row) => row.profileId));
   const orderCounts = new Map<string, number>();
   for (const row of orderRows) {
     if (row.userId) orderCounts.set(row.userId, row.count);
   }
-  return { withAddress, orderCounts };
+  return {
+    withAddress: addressRows.map((row) => row.profileId),
+    orderCounts: Object.fromEntries(orderCounts),
+  };
 }

@@ -1,9 +1,11 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
 import { and, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { formatDate } from "@repo/shared";
 import { getDb } from "@/lib/db";
 import { addresses, orders, products, profiles, stores, type Role } from "@/lib/db/schema";
+import { lifetimes, tags } from "@/lib/cache";
 
 export const USERS_PER_PAGE = 20;
 
@@ -65,6 +67,11 @@ export async function listAdminUsers({
   role: UserRoleFilter;
   page: number;
 }): Promise<AdminUsersPage> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.users);
+  cacheTag(tags.stores);
+
   const db = getDb();
   const current = Math.max(1, Math.trunc(page) || 1);
   const term = q.trim();

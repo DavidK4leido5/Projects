@@ -24,8 +24,11 @@ import {
 } from "@repo/ui";
 import { formatMoney } from "@repo/shared";
 import { EntityDrawer } from "@/components/entity-drawer";
+import { Pagination } from "@/components/pagination";
 import { ProductForm } from "@/components/product-form";
+import { ResultsRegion } from "@/components/results-region";
 import { RowMenu } from "@/components/row-menu";
+import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { createProduct, deleteProduct, updateProduct } from "@/features/products/actions";
 import type { ProductListItem, ProductScope } from "@/features/products/queries";
@@ -197,13 +200,6 @@ export function ProductManager({
     navigate(next, "push");
   }
 
-  function goToPage(nextPage: number) {
-    const next = new URLSearchParams(searchParams.toString());
-    if (nextPage <= 1) next.delete("page");
-    else next.set("page", String(nextPage));
-    navigate(next, "push");
-  }
-
   function save(data: FormData) {
     const base = editing ?? undefined;
     const draft = draftFrom(data, base);
@@ -313,142 +309,127 @@ export function ProductManager({
         }
       />
 
-      {rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border px-5 py-10">
-          <p className="text-sm text-muted-foreground">
-            {filtered
-              ? "No products match these filters."
-              : scope === "store"
-                ? "Nothing listed yet. Add your first item and it shows up on the storefront."
-                : "No products yet."}
-          </p>
-          {!filtered && scope === "store" ? (
-            <Button onClick={openCreate} variant="outline" size="sm">
-              <Plus />
-              Add item
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Category</TableHead>
-                {scope === "admin" ? <TableHead>Store</TableHead> : null}
-                <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead className="w-12 text-right">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((item) => {
-                const cover = item.images[0];
-                return (
-                  <TableRow
-                    key={item.id}
-                    tabIndex={0}
-                    className="cursor-pointer"
-                    onClick={() => openEdit(item)}
-                    onKeyDown={(event) => {
-                      if (event.target !== event.currentTarget) return;
-                      if (event.key !== "Enter" && event.key !== " ") return;
-                      event.preventDefault();
-                      openEdit(item);
-                    }}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {cover ? (
-                          <Image
-                            src={cover}
-                            alt=""
-                            width={40}
-                            height={40}
-                            className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 shrink-0 rounded-md bg-muted" />
-                        )}
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="truncate font-medium">{item.name}</span>
-                          {item.featured ? <Badge variant="secondary">Hero</Badge> : null}
+      <ResultsRegion
+        id="product-results"
+        className="scroll-mt-28"
+        skeleton={
+          <TableSkeleton rows={20} columns={scope === "admin" ? 6 : 5} variant="products" />
+        }
+      >
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border px-5 py-10">
+            <p className="text-sm text-muted-foreground">
+              {filtered
+                ? "No products match these filters."
+                : scope === "store"
+                  ? "Nothing listed yet. Add your first item and it shows up on the storefront."
+                  : "No products yet."}
+            </p>
+            {!filtered && scope === "store" ? (
+              <Button onClick={openCreate} variant="outline" size="sm">
+                <Plus />
+                Add item
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
+            {/* Cell padding and header height match TableSkeleton, so rows replace the skeleton in place. */}
+            <Table className="[&_td]:px-5 [&_td]:py-2.5 [&_th]:h-9 [&_th]:px-5">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Category</TableHead>
+                  {scope === "admin" ? <TableHead>Store</TableHead> : null}
+                  <TableHead>Price</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead className="w-12 text-right">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((item) => {
+                  const cover = item.images[0];
+                  return (
+                    <TableRow
+                      key={item.id}
+                      tabIndex={0}
+                      className="cursor-pointer"
+                      onClick={() => openEdit(item)}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        openEdit(item);
+                      }}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {cover ? (
+                            <Image
+                              src={cover}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 shrink-0 rounded-md bg-muted" />
+                          )}
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium">{item.name}</span>
+                            {item.featured ? <Badge variant="secondary">Hero</Badge> : null}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {item.category ?? "Uncategorised"}
-                    </TableCell>
-                    {scope === "admin" ? (
-                      <TableCell className="text-muted-foreground">{item.storeName}</TableCell>
-                    ) : null}
-                    <TableCell className="tabular-nums">{formatMoney(item.priceCents)}</TableCell>
-                    <TableCell className="tabular-nums">{item.stock}</TableCell>
-                    <TableCell className="text-right">
-                      <RowMenu
-                        label={"Actions for " + item.name}
-                        items={[
-                          {
-                            label: "Edit",
-                            icon: <Pencil />,
-                            onSelect: () => openEdit(item),
-                          },
-                          {
-                            label: "View on storefront",
-                            icon: <ExternalLink />,
-                            onSelect: () =>
-                              window.open(
-                                "/products/" + item.slug,
-                                "_blank",
-                                "noopener,noreferrer",
-                              ),
-                          },
-                          {
-                            label: "Delete",
-                            icon: <Trash2 />,
-                            destructive: true,
-                            separatorBefore: true,
-                            onSelect: () => setDeleting(item),
-                          },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.category ?? "Uncategorised"}
+                      </TableCell>
+                      {scope === "admin" ? (
+                        <TableCell className="text-muted-foreground">{item.storeName}</TableCell>
+                      ) : null}
+                      <TableCell className="tabular-nums">{formatMoney(item.priceCents)}</TableCell>
+                      <TableCell className="tabular-nums">{item.stock}</TableCell>
+                      <TableCell className="text-right">
+                        <RowMenu
+                          label={"Actions for " + item.name}
+                          items={[
+                            {
+                              label: "Edit",
+                              icon: <Pencil />,
+                              onSelect: () => openEdit(item),
+                            },
+                            {
+                              label: "View on storefront",
+                              icon: <ExternalLink />,
+                              onSelect: () =>
+                                window.open(
+                                  "/products/" + item.slug,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                ),
+                            },
+                            {
+                              label: "Delete",
+                              icon: <Trash2 />,
+                              destructive: true,
+                              separatorBefore: true,
+                              onSelect: () => setDeleting(item),
+                            },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </ResultsRegion>
 
-      {pages > 1 ? (
-        <nav aria-label="Pagination" className="flex items-center justify-between gap-3">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => goToPage(page - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-sm tabular-nums text-muted-foreground">
-            Page {page} of {pages}
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={page >= pages}
-            onClick={() => goToPage(page + 1)}
-          >
-            Next
-          </Button>
-        </nav>
-      ) : null}
+      <Pagination page={page} pages={pages} scrollTargetId="product-results" />
 
       <EntityDrawer
         open={mode !== "closed"}

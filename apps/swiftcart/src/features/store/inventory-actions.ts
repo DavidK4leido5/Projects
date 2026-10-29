@@ -44,6 +44,7 @@ export async function updateVariantStock(variantId: string, stock: number): Prom
     .set({ stock: totals[0]?.total ?? 0 })
     .where(eq(products.id, variant.productId));
 
+  updateTag(tags.inventory(actor.store.id));
   updateTag(tags.products);
   updateTag(tags.store(actor.store.slug));
   return { ok: true };

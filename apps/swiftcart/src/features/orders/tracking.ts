@@ -1,9 +1,11 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
 import { desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { orderEvents, orderFulfilments, orderItems, orders, stores } from "@/lib/db/schema";
 import type { getActor } from "@/lib/auth/guards";
+import { lifetimes, tags } from "@/lib/cache";
 import { SLICE_FLOW, rollup, type SliceStatus } from "@/lib/order-status";
 
 export { SLICE_FLOW, rollup, type SliceStatus } from "@/lib/order-status";
@@ -75,6 +77,58 @@ async function slicesFor(orderIds: string[]): Promise<Map<string, Slice[]>> {
   return byOrder;
 }
 
+/** Store slices only, with no session input. This is the cacheable shape. */
+async function storeTrackingRows(storeId: string): Promise<TrackRow[]> {
+  const db = getDb();
+
+  const mine = await db
+    .select({ orderId: orderFulfilments.orderId })
+    .from(orderFulfilments)
+    .where(eq(orderFulfilments.storeId, storeId));
+  const ids = [...new Set(mine.map((row) => row.orderId))];
+  if (ids.length === 0) return [];
+
+  const orderRows = await db
+    .select({
+      id: orders.id,
+      accessToken: orders.accessToken,
+      publicRef: orders.publicRef,
+      createdAt: orders.createdAt,
+      totalCents: orders.totalCents,
+    })
+    .from(orders)
+    .where(inArray(orders.id, ids))
+    .orderBy(desc(orders.createdAt));
+
+  const byOrder = await slicesFor(orderRows.map((row) => row.id));
+
+  return orderRows.map((row) => {
+    const slices = (byOrder.get(row.id) ?? []).filter((slice) => slice.storeId === storeId);
+    return {
+      id: row.id,
+      token: row.accessToken,
+      ref: row.publicRef,
+      createdAt: row.createdAt,
+      totalCents: row.totalCents,
+      status: rollup(slices.map((slice) => slice.status)),
+      role: "store",
+      slices,
+    };
+  });
+}
+
+/**
+ * The store dashboard's list. Cached per store, never per signed-in user:
+ * a store owner only ever sees their own slices. `storeSlug` is only a tag.
+ */
+export async function listStoreTracking(storeId: string, storeSlug: string): Promise<TrackRow[]> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.orders, tags.store(storeSlug));
+
+  return storeTrackingRows(storeId);
+}
+
 /** Rows the actor is allowed to see, scoped by role. */
 export async function listTracking(actor: Actor): Promise<TrackRow[]> {
   const db = getDb();
@@ -102,23 +156,7 @@ export async function listTracking(actor: Actor): Promise<TrackRow[]> {
       .orderBy(desc(orders.createdAt))
       .limit(100);
   } else if (actor.kind === "store") {
-    const mine = await db
-      .select({ orderId: orderFulfilments.orderId })
-      .from(orderFulfilments)
-      .where(eq(orderFulfilments.storeId, actor.store.id));
-    const ids = [...new Set(mine.map((row) => row.orderId))];
-    if (ids.length === 0) return [];
-    orderRows = await db
-      .select({
-        id: orders.id,
-        accessToken: orders.accessToken,
-        publicRef: orders.publicRef,
-        createdAt: orders.createdAt,
-        totalCents: orders.totalCents,
-      })
-      .from(orders)
-      .where(inArray(orders.id, ids))
-      .orderBy(desc(orders.createdAt));
+    return listStoreTracking(actor.store.id, actor.store.slug);
   } else {
     orderRows = await db
       .select({
@@ -136,9 +174,7 @@ export async function listTracking(actor: Actor): Promise<TrackRow[]> {
   const byOrder = await slicesFor(orderRows.map((row) => row.id));
 
   return orderRows.map((row) => {
-    const all = byOrder.get(row.id) ?? [];
-    const visible =
-      actor.kind === "store" ? all.filter((slice) => slice.storeId === actor.store.id) : all;
+    const visible = byOrder.get(row.id) ?? [];
     return {
       id: row.id,
       token: row.accessToken,

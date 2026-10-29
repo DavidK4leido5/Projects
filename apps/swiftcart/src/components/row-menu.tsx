@@ -33,13 +33,7 @@ export function RowMenu({ label = "Actions", items }: RowMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label={label}
-        >
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label={label}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

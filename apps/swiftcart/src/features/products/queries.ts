@@ -1,9 +1,11 @@
 import "server-only";
 
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { productImages, productVariants, products, stores } from "@/lib/db/schema";
 import type { ProductProperty, VariantOptions } from "@/lib/db/schema";
+import { lifetimes, tags } from "@/lib/cache";
 
 export type StoreVariant = {
   id: string;
@@ -77,6 +79,11 @@ async function loadProductDetails(ids: string[]): Promise<ProductDetails> {
 
 /** The seller's own catalogue, with previews, properties, and every variant. */
 export async function listStoreItems(storeId: string): Promise<StoreItem[]> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+  cacheTag(tags.inventory(storeId));
+
   const rows = await getDb()
     .select()
     .from(products)
@@ -136,10 +143,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * One page of products for either scope. Store scope is always pinned to the
- * seller's store; admin scope can filter by any store. Not cached: both callers
- * sit behind an auth guard.
+ * seller's store; admin scope can filter by any store. The argument object is
+ * the cache key, so no session or cookie is read in here.
  */
 export async function listProductsPage(args: ListProductsPageArgs): Promise<ProductsPageResult> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+  if (args.storeId) cacheTag(tags.inventory(args.storeId));
+
   const perPage = Math.min(Math.max(Math.trunc(args.perPage ?? 20), 1), 100);
   const requestedPage = Math.max(Math.trunc(args.page ?? 1), 1);
   const term = args.q?.trim() ?? "";
@@ -247,6 +259,11 @@ export async function listProductsPage(args: ListProductsPageArgs): Promise<Prod
 
 /** Distinct non-null categories, optionally narrowed to one store. */
 export async function listProductCategories(storeId?: string): Promise<string[]> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+  if (storeId) cacheTag(tags.inventory(storeId));
+
   const rows = await getDb()
     .selectDistinct({ category: products.category })
     .from(products)
@@ -258,6 +275,11 @@ export async function listProductCategories(storeId?: string): Promise<string[]>
 
 /** Store choices for the admin-only store filter. */
 export async function listStoreOptions(): Promise<{ id: string; name: string }[]> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.stores);
+  cacheTag(tags.products);
+
   return getDb()
     .select({ id: stores.id, name: stores.name })
     .from(stores)
@@ -266,6 +288,11 @@ export async function listStoreOptions(): Promise<{ id: string; name: string }[]
 
 /** Counts and stock value for the dashboard cards, without loading every row. */
 export async function storeProductStats(storeId: string) {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+  cacheTag(tags.inventory(storeId));
+
   const rows = await getDb()
     .select({
       items: sql<number>`count(*)`.mapWith(Number),
