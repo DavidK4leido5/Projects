@@ -70,6 +70,29 @@ The hero is art-directed with `getImageProps` rather than two `<Image>` elements
 band gets wider than 5:2, so the sides of a 5:2 banner are cropped slightly; below about 1400px wide
 the match is near exact.
 
+## Item options
+
+An item can define up to three options, each with up to twenty values, and the combinations become
+variants. Nothing is fixed to clothing: one item has Size and Colour, the next has Roast and Grind, a
+third has none.
+
+```
+products.properties   [{ "name": "Size", "values": ["S","M","L"] }]
+product_variants      one row per combination: options, price, stock, sku, image
+```
+
+The variants table is what the cart, stock claiming, and orders use. `cart_items` is unique per
+(user, variant), and `order_items` stores the variant id plus a text snapshot of the chosen values,
+so renaming an option later never rewrites history.
+
+Products without options still get exactly one variant with empty options, which keeps the cart code
+on one path. `products.stock` is a rolled-up sum for cards and filters; the variant rows are
+authoritative.
+
+A variant image is optional. When a buyer picks that combination the main gallery image swaps to it.
+Setting an image on one row copies it to the other rows sharing the first option value, which is how
+colour variations avoid twelve separate uploads.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial

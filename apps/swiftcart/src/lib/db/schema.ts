@@ -2,6 +2,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -57,6 +58,7 @@ export const products = pgTable(
     priceCents: integer("price_cents").notNull(),
     stock: integer("stock").notNull().default(0),
     featured: boolean("featured").notNull().default(false),
+    properties: jsonb("properties").$type<ProductProperty[]>().notNull().default([]),
     bannerWideKey: text("banner_wide_key"),
     bannerTallKey: text("banner_tall_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -65,6 +67,28 @@ export const products = pgTable(
     uniqueIndex("products_slug_idx").on(table.slug),
     index("products_store_idx").on(table.storeId),
   ],
+);
+
+export type ProductProperty = { name: string; values: string[] };
+
+export type VariantOptions = Record<string, string>;
+
+export const productVariants = pgTable(
+  "product_variants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    options: jsonb("options").$type<VariantOptions>().notNull().default({}),
+    priceCents: integer("price_cents"),
+    stock: integer("stock").notNull().default(0),
+    sku: text("sku"),
+    imageKey: text("image_key"),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("product_variants_product_idx").on(table.productId)],
 );
 
 export const productImages = pgTable(
@@ -94,11 +118,14 @@ export const cartItems = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
     quantity: integer("quantity").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("cart_items_user_product_idx").on(table.userId, table.productId),
+    uniqueIndex("cart_items_user_variant_idx").on(table.userId, table.variantId),
     index("cart_items_user_idx").on(table.userId),
   ],
 );
@@ -128,6 +155,8 @@ export const orderItems = pgTable(
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
     // Snapshots: renaming or deleting a product must not rewrite history.
+    variantId: uuid("variant_id").references(() => productVariants.id, { onDelete: "set null" }),
+    optionSummary: text("option_summary"),
     productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
     storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
     productName: text("product_name").notNull(),
@@ -144,5 +173,6 @@ export type Profile = typeof profiles.$inferSelect;
 export type Store = typeof stores.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type ProductImage = typeof productImages.$inferSelect;
+export type ProductVariant = typeof productVariants.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Role = "admin" | "store" | "user";

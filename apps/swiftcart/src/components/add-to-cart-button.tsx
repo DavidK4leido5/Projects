@@ -2,15 +2,18 @@ import { Button } from "@repo/ui";
 import { addToCart } from "@/features/cart/actions";
 
 type AddToCartButtonProps = {
-  productId: string;
+  variantId: string;
+  disabled?: boolean;
   className?: string;
 };
 
-export function AddToCartButton({ productId, className }: AddToCartButtonProps) {
+export function AddToCartButton({ variantId, disabled, className }: AddToCartButtonProps) {
   return (
     <form action={addToCart} className={className}>
-      <input type="hidden" name="productId" value={productId} />
-      <Button type="submit">Add to cart</Button>
+      <input type="hidden" name="variantId" value={variantId} />
+      <Button type="submit" disabled={disabled}>
+        Add to cart
+      </Button>
     </form>
   );
 }

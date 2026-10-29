@@ -3,7 +3,7 @@ import "server-only";
 import { and, asc, desc, eq, gt, ilike, isNotNull, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/lib/db";
-import { productImages, products, stores } from "@/lib/db/schema";
+import { productImages, productVariants, products, stores } from "@/lib/db/schema";
 import { lifetimes, tags } from "@/lib/cache";
 
 const productColumns = {
@@ -14,6 +14,7 @@ const productColumns = {
   priceCents: products.priceCents,
   stock: products.stock,
   featured: products.featured,
+  properties: products.properties,
   coverKey: sql<
     string | null
   >`(select pi.key from ${productImages} pi where pi.product_id = ${products.id} order by pi.position limit 1)`,
@@ -176,13 +177,30 @@ export async function getProductBySlug(slug: string) {
   const product = rows[0];
   if (!product) return null;
 
-  const gallery = await getDb()
-    .select({ key: productImages.key })
-    .from(productImages)
-    .where(eq(productImages.productId, product.id))
-    .orderBy(productImages.position);
+  const [gallery, variants] = await Promise.all([
+    getDb()
+      .select({ key: productImages.key })
+      .from(productImages)
+      .where(eq(productImages.productId, product.id))
+      .orderBy(productImages.position),
+    getDb()
+      .select({
+        id: productVariants.id,
+        options: productVariants.options,
+        priceCents: productVariants.priceCents,
+        stock: productVariants.stock,
+        imageKey: productVariants.imageKey,
+      })
+      .from(productVariants)
+      .where(eq(productVariants.productId, product.id))
+      .orderBy(productVariants.position),
+  ]);
 
-  return { ...product, images: gallery.map((image) => image.key) };
+  return {
+    ...product,
+    images: gallery.map((image) => image.key),
+    variants,
+  };
 }
 
 export async function getStoreBySlug(slug: string) {

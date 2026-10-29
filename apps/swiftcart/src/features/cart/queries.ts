@@ -2,25 +2,32 @@ import "server-only";
 
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { cartItems, productImages, products, stores } from "@/lib/db/schema";
+import { cartItems, productImages, productVariants, products, stores } from "@/lib/db/schema";
 
 export async function getCart(userId: string) {
   const rows = await getDb()
     .select({
       id: cartItems.id,
       quantity: cartItems.quantity,
+      variantId: productVariants.id,
+      variantOptions: productVariants.options,
+      variantImageKey: productVariants.imageKey,
       productId: products.id,
       productName: products.name,
       productSlug: products.slug,
-      priceCents: products.priceCents,
+      priceCents:
+        sql<number>`coalesce(${productVariants.priceCents}, ${products.priceCents})`.mapWith(
+          Number,
+        ),
       coverKey: sql<
         string | null
       >`(select pi.key from ${productImages} pi where pi.product_id = ${products.id} order by pi.position limit 1)`,
-      stock: products.stock,
+      stock: productVariants.stock,
       storeName: stores.name,
       storeSlug: stores.slug,
     })
     .from(cartItems)
+    .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
     .innerJoin(products, eq(cartItems.productId, products.id))
     .innerJoin(stores, eq(products.storeId, stores.id))
     .where(eq(cartItems.userId, userId))

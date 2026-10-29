@@ -55,9 +55,9 @@ async function CartPageBody({ searchParams }: { searchParams: Promise<{ error?: 
               <li key={item.id}>
                 <Card className="flex flex-wrap items-center gap-4">
                   <Link href={`/products/${item.productSlug}`} className="shrink-0">
-                    {item.coverKey ? (
+                    {(item.variantImageKey ?? item.coverKey) ? (
                       <Image
-                        src={item.coverKey}
+                        src={item.variantImageKey ?? item.coverKey ?? ""}
                         alt={item.productName}
                         width={64}
                         height={64}
@@ -78,6 +78,13 @@ async function CartPageBody({ searchParams }: { searchParams: Promise<{ error?: 
                       {item.productName}
                     </Link>
                     <span className="text-xs text-neutral-500">{item.storeName}</span>
+                    {Object.keys(item.variantOptions).length > 0 ? (
+                      <span className="text-xs text-neutral-600">
+                        {Object.entries(item.variantOptions)
+                          .map(([name, value]) => name + ": " + value)
+                          .join(" · ")}
+                      </span>
+                    ) : null}
                     <span className="text-xs text-neutral-500">
                       {formatMoney(item.priceCents)} each, {item.stock} in stock
                     </span>

@@ -83,7 +83,14 @@ async function OrderPageBody({ params }: { params: Promise<{ id: string }> }) {
             <tbody className="divide-y divide-neutral-200">
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td className="px-5 py-3 font-medium text-neutral-900">{item.productName}</td>
+                  <td className="px-5 py-3 font-medium text-neutral-900">
+                    {item.productName}
+                    {item.optionSummary ? (
+                      <span className="block text-xs font-normal text-neutral-500">
+                        {item.optionSummary}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-5 py-3 text-neutral-600">{item.storeName}</td>
                   <td className="px-5 py-3 text-neutral-600">{formatMoney(item.priceCents)}</td>
                   <td className="px-5 py-3 text-neutral-600">{item.quantity}</td>

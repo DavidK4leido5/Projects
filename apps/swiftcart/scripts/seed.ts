@@ -4,7 +4,14 @@ import { getDb } from "../src/lib/db/index.js";
 import { cloudinaryConfigured, uploadToCloudinary } from "../src/lib/cloudinary.js";
 import { getStorageConfig } from "../src/lib/env.js";
 import { posterTile } from "./png.js";
-import { cartItems, productImages, products, profiles, stores } from "../src/lib/db/schema.js";
+import {
+  cartItems,
+  productImages,
+  productVariants,
+  products,
+  profiles,
+  stores,
+} from "../src/lib/db/schema.js";
 
 const ORIGIN = process.env.NEON_AUTH_TRUSTED_ORIGIN ?? "http://localhost:3000";
 const PASSWORD = "demo1234";
@@ -201,6 +208,40 @@ async function main() {
       await db
         .insert(productImages)
         .values(keys.map((key, position) => ({ productId: product.id, key, position })));
+
+      // Two demo items carry options so the picker has something to show.
+      const optionDemo: Record<
+        string,
+        { properties: { name: string; values: string[] }[]; stock: number[] }
+      > = {
+        "Canvas Tool Roll": {
+          properties: [{ name: "Color", values: ["Bone", "Black", "Olive"] }],
+          stock: [4, 0, 0],
+        },
+        "Linen Shop Apron": {
+          properties: [{ name: "Size", values: ["S", "M", "L"] }],
+          stock: [3, 5, 2],
+        },
+      };
+
+      const demo = optionDemo[item.name];
+      if (demo) {
+        await db.delete(productVariants).where(eq(productVariants.productId, product.id));
+        await db
+          .update(products)
+          .set({ properties: demo.properties })
+          .where(eq(products.id, product.id));
+        await db.insert(productVariants).values(
+          demo.properties.flatMap((property) =>
+            property.values.map((value, index) => ({
+              productId: product.id,
+              options: { [property.name]: value },
+              stock: demo.stock[index] ?? 0,
+              position: index,
+            })),
+          ),
+        );
+      }
 
       if (item.featured) {
         const wide = await uploadTile(item.name, 3168, 1344, "banner-wide");

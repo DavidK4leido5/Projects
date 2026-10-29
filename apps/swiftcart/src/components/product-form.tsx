@@ -5,6 +5,7 @@ import { Button, Checkbox, Input, Label, Textarea } from "@repo/ui";
 import { emptyFormState, type FormState } from "@/lib/form";
 import { HeroBannerFields } from "@/components/hero-banner-fields";
 import { ProductImagesField } from "@/components/product-images-field";
+import { VariantFields } from "@/components/variant-fields";
 import type { StoreItem } from "@/features/products/queries";
 
 type ProductFormProps = {
@@ -67,6 +68,14 @@ export function ProductForm({ action, product, onCancel }: ProductFormProps) {
       <div className="flex flex-col gap-2">
         <Label>Previews</Label>
         <ProductImagesField initial={product?.images ?? []} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Options</Label>
+        <VariantFields
+          initialProperties={product?.properties ?? []}
+          initialVariants={product?.variants ?? []}
+        />
       </div>
 
       <div className="flex flex-col gap-3">
