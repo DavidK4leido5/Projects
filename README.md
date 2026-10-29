@@ -6,7 +6,7 @@ Turborepo monorepo. pnpm workspaces, TypeScript everywhere, shared UI and config
 
 ```
 apps/
-  web/          Next.js app, reference consumer of the shared packages
+  swiftcart/    Next.js storefront on Neon Postgres + object storage
 packages/
   config/       tsconfig bases and the ESLint flat config
   shared/       framework-agnostic helpers and types
@@ -25,7 +25,7 @@ packages/
 | `pnpm format`    | Prettier write                                  |
 | `pnpm check`     | lint + typecheck + format check, the CI gate    |
 
-Targeted runs: `pnpm --filter web dev`, `pnpm --filter @repo/ui typecheck`.
+Targeted runs: `pnpm --filter @repo/swiftcart dev`, `pnpm --filter @repo/ui typecheck`.
 
 ## Adding things
 
