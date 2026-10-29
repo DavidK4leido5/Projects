@@ -47,38 +47,18 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Featured products"
-      className="relative overflow-hidden bg-neutral-950"
+      className="relative bg-neutral-950 py-0 sm:py-6"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
       {/*
-        The frame takes the banner's own ratio at the old capped height, so the whole
-        image shows and nothing is cropped. Phones get the 9:16 file edge to edge;
-        desktop centres a 16:9 stage inside the dark band instead of stretching it
-        past 3:1 and slicing the artwork.
+        A 16:9 banner at full width would be far taller than the page wants, and any
+        shorter full-bleed frame crops the artwork. The stage therefore keeps the
+        banner's own ratio and sits on the content grid as a deliberate card.
       */}
-      {/* Blurred copy of the active banner fills the side bands so the stage never
-          looks like letterboxing. Only the current slide is mounted. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        {slides.map((slide, slideIndex) =>
-          slideIndex === index ? (
-            <picture key={slide.id}>
-              <source media="(min-width: 640px)" srcSet={slide.wideSrcSet} sizes="100vw" />
-              <img
-                src={slide.tallSrc}
-                srcSet={slide.tallSrcSet}
-                sizes="100vw"
-                alt=""
-                className="h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-              />
-            </picture>
-          ) : null,
-        )}
-      </div>
-
-      <div className="relative mx-auto aspect-[9/16] w-full sm:aspect-video sm:h-[clamp(300px,40vw,560px)] sm:w-auto">
+      <div className="relative mx-auto aspect-[9/16] w-full overflow-hidden sm:aspect-video sm:max-w-5xl sm:rounded-xl sm:ring-1 sm:ring-white/10">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (
@@ -93,7 +73,11 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
               }
             >
               <picture>
-                <source media="(min-width: 640px)" srcSet={slide.wideSrcSet} sizes="100vw" />
+                <source
+                  media="(min-width: 640px)"
+                  srcSet={slide.wideSrcSet}
+                  sizes="(min-width: 1024px) 1024px, 100vw"
+                />
                 <img
                   src={slide.tallSrc}
                   srcSet={slide.tallSrcSet}
@@ -108,59 +92,61 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
         })}
 
         {count > 1 ? (
-          <>
-            <button
-              type="button"
-              onClick={() => go(index - 1)}
-              aria-label="Previous featured product"
-              className="absolute left-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-950/40 text-white backdrop-blur transition-colors hover:bg-neutral-950/70 sm:flex"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="m14 6-6 6 6 6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go(index + 1)}
-              aria-label="Next featured product"
-              className="absolute right-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-950/40 text-white backdrop-blur transition-colors hover:bg-neutral-950/70 sm:flex"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="m10 6 6 6-6 6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-
-            <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-2">
-              {slides.map((slide, slideIndex) => (
-                <button
-                  key={slide.id}
-                  type="button"
-                  onClick={() => go(slideIndex)}
-                  aria-label={"Show " + slide.name}
-                  aria-current={slideIndex === index}
-                  className={
-                    "h-1.5 rounded-full transition-all " +
-                    (slideIndex === index ? "w-7 bg-white" : "w-1.5 bg-white/40 hover:bg-white/70")
-                  }
-                />
-              ))}
-            </div>
-          </>
+          <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-2">
+            {slides.map((slide, slideIndex) => (
+              <button
+                key={slide.id}
+                type="button"
+                onClick={() => go(slideIndex)}
+                aria-label={"Show " + slide.name}
+                aria-current={slideIndex === index}
+                className={
+                  "h-1.5 rounded-full transition-all " +
+                  (slideIndex === index ? "w-7 bg-white" : "w-1.5 bg-white/40 hover:bg-white/70")
+                }
+              />
+            ))}
+          </div>
         ) : null}
       </div>
+
+      {count > 1 ? (
+        <>
+          <button
+            type="button"
+            onClick={() => go(index - 1)}
+            aria-label="Previous featured product"
+            className="absolute left-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-900/60 text-white backdrop-blur transition-colors hover:bg-neutral-800 lg:flex"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="m14 6-6 6 6 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => go(index + 1)}
+            aria-label="Next featured product"
+            className="absolute right-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-900/60 text-white backdrop-blur transition-colors hover:bg-neutral-800 lg:flex"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="m10 6 6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </>
+      ) : null}
     </section>
   );
 }
