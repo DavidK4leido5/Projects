@@ -57,6 +57,8 @@ export const products = pgTable(
     priceCents: integer("price_cents").notNull(),
     stock: integer("stock").notNull().default(0),
     featured: boolean("featured").notNull().default(false),
+    bannerWideKey: text("banner_wide_key"),
+    bannerTallKey: text("banner_tall_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

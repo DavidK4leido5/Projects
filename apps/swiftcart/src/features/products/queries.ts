@@ -11,6 +11,8 @@ export type StoreItem = {
   priceCents: number;
   stock: number;
   featured: boolean;
+  bannerWideKey: string | null;
+  bannerTallKey: string | null;
   slug: string;
   images: string[];
 };
@@ -50,6 +52,8 @@ export async function listStoreItems(storeId: string): Promise<StoreItem[]> {
     priceCents: row.priceCents,
     stock: row.stock,
     featured: row.featured,
+    bannerWideKey: row.bannerWideKey,
+    bannerTallKey: row.bannerTallKey,
     slug: row.slug,
     images: byProduct.get(row.id) ?? [],
   }));

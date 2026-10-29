@@ -37,6 +37,12 @@ Each item carries up to ten previews in `product_images`, ordered, with the firs
 go through `/api/upload`, so every preview lands in object storage and Cloudinary. Removing a preview,
 or deleting the item, removes the objects from both stores rather than orphaning them.
 
+Featuring an item requires two art-directed banners: 16:9 for desktop and 9:16 for mobile, both
+mandatory. The hero renders a `<picture>` whose `(min-width: 640px)` source is the wide banner and
+whose `<img>` is the tall one, so phones get the vertical crop and desktops the horizontal one. The
+ratio is checked in the browser before upload; the action refuses a featured item missing either
+banner.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial

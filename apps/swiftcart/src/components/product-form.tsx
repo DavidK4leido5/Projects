@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button, Checkbox, Input, Label, Textarea } from "@repo/ui";
 import { emptyFormState, type FormState } from "@/lib/form";
+import { HeroBannerFields } from "@/components/hero-banner-fields";
 import { ProductImagesField } from "@/components/product-images-field";
 import type { StoreItem } from "@/features/products/queries";
 
@@ -14,10 +15,12 @@ type ProductFormProps = {
 
 export function ProductForm({ action, product, onCancel }: ProductFormProps) {
   const [state, formAction, pending] = useActionState(action, emptyFormState);
+  const [featured, setFeatured] = useState(Boolean(product?.featured));
 
   return (
     <form action={formAction} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
+      {featured ? <input type="hidden" name="featured" value="on" /> : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name">Name</Label>
@@ -66,15 +69,36 @@ export function ProductForm({ action, product, onCancel }: ProductFormProps) {
         <ProductImagesField initial={product?.images ?? []} />
       </div>
 
-      <label className="flex items-start gap-3 rounded-md border border-border px-3 py-2.5">
-        <Checkbox name="featured" defaultChecked={product?.featured ?? false} className="mt-0.5" />
-        <span className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">Feature in the hero</span>
-          <span className="text-xs text-muted-foreground">
-            Featured products with a cover image rotate at the top of the shop.
+      <div className="flex flex-col gap-3">
+        <label className="flex items-start gap-3 rounded-md border border-border px-3 py-2.5">
+          <Checkbox
+            checked={featured}
+            onCheckedChange={(value) => setFeatured(value === true)}
+            className="mt-0.5"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">Feature in the hero</span>
+            <span className="text-xs text-muted-foreground">
+              Rotates at the top of the shop. Needs two banner images, one per screen shape.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+
+        {featured ? (
+          <div className="flex flex-col gap-3 rounded-md border border-border px-3 py-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">Hero banners</span>
+              <span className="text-xs text-muted-foreground">
+                Required while this item is featured. The text belongs in the artwork.
+              </span>
+            </div>
+            <HeroBannerFields
+              wideInitial={product?.bannerWideKey}
+              tallInitial={product?.bannerTallKey}
+            />
+          </div>
+        ) : null}
+      </div>
 
       {state.error ? (
         <p

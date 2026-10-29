@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gt, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, isNotNull, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { productImages, products, stores } from "@/lib/db/schema";
@@ -105,7 +105,8 @@ export type HeroSlideModel = {
   id: string;
   slug: string;
   name: string;
-  coverKey: string;
+  bannerWideKey: string;
+  bannerTallKey: string;
 };
 
 /** Featured products that have artwork, newest first. These drive the hero. */
@@ -120,22 +121,26 @@ export async function listFeaturedProducts(limit = 8): Promise<HeroSlideModel[]>
       id: products.id,
       slug: products.slug,
       name: products.name,
-      coverKey: sql<
-        string | null
-      >`(select pi.key from ${productImages} pi where pi.product_id = ${products.id} order by pi.position limit 1)`,
+      bannerWideKey: products.bannerWideKey,
+      bannerTallKey: products.bannerTallKey,
     })
     .from(products)
     .innerJoin(stores, eq(products.storeId, stores.id))
     .where(
       and(
         eq(products.featured, true),
-        sql`exists (select 1 from ${productImages} pi where pi.product_id = ${products.id})`,
+        isNotNull(products.bannerWideKey),
+        isNotNull(products.bannerTallKey),
       ),
     )
     .orderBy(desc(products.createdAt))
     .limit(limit);
 
-  return rows.flatMap((row) => (row.coverKey ? [{ ...row, coverKey: row.coverKey }] : []));
+  return rows.flatMap((row) =>
+    row.bannerWideKey && row.bannerTallKey
+      ? [{ ...row, bannerWideKey: row.bannerWideKey, bannerTallKey: row.bannerTallKey }]
+      : [],
+  );
 }
 
 export async function listStoreFacets() {

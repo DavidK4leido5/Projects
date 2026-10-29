@@ -168,8 +168,8 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
           <SheetHeader className="border-b border-border px-6 py-5">
             <SheetTitle>{mode === "edit" ? "Edit item" : "Add item"}</SheetTitle>
             <SheetDescription>
-              Previews are uploaded to object storage and mirrored to Cloudinary. The first is the
-              cover.
+              Previews and hero banners go to object storage and are mirrored to Cloudinary. The
+              first preview is the cover.
             </SheetDescription>
           </SheetHeader>
 

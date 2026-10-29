@@ -1,4 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { eq } from "drizzle-orm";
 import { getDb } from "../src/lib/db/index.js";
 import { cloudinaryConfigured, uploadToCloudinary } from "../src/lib/cloudinary.js";
 import { getStorageConfig } from "../src/lib/env.js";
@@ -96,10 +97,11 @@ function storageClient() {
 }
 
 /** Demo artwork so the catalogue is not a wall of grey boxes. */
-async function uploadTile(name: string): Promise<string> {
+async function uploadTile(name: string, width = 1600, height = 800, variant = ""): Promise<string> {
   const { client, bucket } = storageClient();
-  const key = "products/seed/" + toSlug(name) + ".png";
-  const body = posterTile(1600, 800, hueOf(name));
+  const suffix = variant ? "-" + variant : "";
+  const key = "products/seed/" + toSlug(name) + suffix + ".png";
+  const body = posterTile(width, height, hueOf(name + variant));
   await client.send(
     new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: "image/png" }),
   );
@@ -192,10 +194,22 @@ async function main() {
       if (!product) throw new Error("Could not insert " + item.name);
 
       // Two previews so the gallery has something to page through.
-      const keys = [await uploadTile(item.name), await uploadTile(item.name + " detail")];
+      const keys = [
+        await uploadTile(item.name, 1600, 800, "cover"),
+        await uploadTile(item.name, 1600, 800, "detail"),
+      ];
       await db
         .insert(productImages)
         .values(keys.map((key, position) => ({ productId: product.id, key, position })));
+
+      if (item.featured) {
+        const wide = await uploadTile(item.name, 1920, 1080, "banner-wide");
+        const tall = await uploadTile(item.name, 1080, 1920, "banner-tall");
+        await db
+          .update(products)
+          .set({ bannerWideKey: wide, bannerTallKey: tall })
+          .where(eq(products.id, product.id));
+      }
     }
   }
 

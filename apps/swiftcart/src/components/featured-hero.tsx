@@ -7,8 +7,10 @@ export type HeroSlide = {
   id: string;
   slug: string;
   name: string;
-  src: string;
-  srcSet?: string;
+  wideSrc: string;
+  wideSrcSet?: string;
+  tallSrc: string;
+  tallSrcSet?: string;
 };
 
 const INTERVAL_MS = 5500;
@@ -52,7 +54,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="relative h-[clamp(300px,40vw,560px)] w-full">
+      <div className="relative h-[min(78vh,640px)] w-full sm:h-[clamp(300px,40vw,560px)]">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (
@@ -66,14 +68,17 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
                 (active ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
               }
             >
-              <img
-                src={slide.src}
-                srcSet={slide.srcSet}
-                sizes="100vw"
-                alt={slide.name}
-                fetchPriority={active ? "high" : "low"}
-                className="h-full w-full object-cover"
-              />
+              <picture>
+                <source media="(min-width: 640px)" srcSet={slide.wideSrcSet} sizes="100vw" />
+                <img
+                  src={slide.tallSrc}
+                  srcSet={slide.tallSrcSet}
+                  sizes="100vw"
+                  alt={slide.name}
+                  fetchPriority={active ? "high" : "low"}
+                  className="h-full w-full object-cover"
+                />
+              </picture>
             </Link>
           );
         })}

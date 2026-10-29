@@ -45,6 +45,8 @@ type ProductInput = {
   stock: number;
   featured: boolean;
   images: string[];
+  bannerWide: string | null;
+  bannerTall: string | null;
 };
 
 function parseProductForm(formData: FormData): ProductInput | { error: string } {
@@ -55,6 +57,8 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
   const stockRaw = text(formData, "stock");
   const stock = stockRaw === "" ? 0 : Number(stockRaw);
   const featured = formData.get("featured") === "on";
+  const bannerWide = text(formData, "bannerWide") || null;
+  const bannerTall = text(formData, "bannerTall") || null;
 
   if (name.length < 2) return { error: "Product name must be at least 2 characters." };
   if (name.length > 80) return { error: "Product name is too long." };
@@ -65,8 +69,11 @@ function parseProductForm(formData: FormData): ProductInput | { error: string } 
   if (images.length === 0) return { error: "Add at least one preview image." };
   if (images.length > MAX_IMAGES)
     return { error: "A product can have at most " + MAX_IMAGES + " previews." };
+  if (featured && (!bannerWide || !bannerTall)) {
+    return { error: "Hero banners are required: one 16:9 for desktop and one 9:16 for mobile." };
+  }
 
-  return { name, description, priceCents, stock, featured, images };
+  return { name, description, priceCents, stock, featured, images, bannerWide, bannerTall };
 }
 
 async function writeImages(productId: string, images: string[]): Promise<void> {
@@ -93,6 +100,8 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
       priceCents: input.priceCents,
       stock: input.stock,
       featured: input.featured,
+      bannerWideKey: input.featured ? input.bannerWide : null,
+      bannerTallKey: input.featured ? input.bannerTall : null,
     })
     .returning({ id: products.id });
 
@@ -116,11 +125,16 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   if ("error" in input) return input;
 
   const owned = await getDb()
-    .select({ id: products.id })
+    .select({
+      id: products.id,
+      bannerWideKey: products.bannerWideKey,
+      bannerTallKey: products.bannerTallKey,
+    })
     .from(products)
     .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)))
     .limit(1);
-  if (!owned[0]) return { error: "Product not found." };
+  const existing = owned[0];
+  if (!existing) return { error: "Product not found." };
 
   const previous = await getDb()
     .select({ key: productImages.key })
@@ -135,10 +149,22 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
       priceCents: input.priceCents,
       stock: input.stock,
       featured: input.featured,
+      bannerWideKey: input.featured ? input.bannerWide : null,
+      bannerTallKey: input.featured ? input.bannerTall : null,
     })
     .where(eq(products.id, id));
 
   await writeImages(id, input.images);
+
+  // Banners that were replaced or switched off leave both stores as well.
+  const nextBanners = new Set(
+    [input.featured ? input.bannerWide : null, input.featured ? input.bannerTall : null].filter(
+      (key): key is string => Boolean(key),
+    ),
+  );
+  for (const key of [existing.bannerWideKey, existing.bannerTallKey]) {
+    if (key && !nextBanners.has(key)) await removeImage(key).catch(() => undefined);
+  }
 
   // Anything dropped from the form leaves both stores as well.
   const kept = new Set(input.images);
@@ -158,11 +184,16 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   if (!id) return;
 
   const owned = await getDb()
-    .select({ id: products.id })
+    .select({
+      id: products.id,
+      bannerWideKey: products.bannerWideKey,
+      bannerTallKey: products.bannerTallKey,
+    })
     .from(products)
     .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)))
     .limit(1);
-  if (!owned[0]) return;
+  const product = owned[0];
+  if (!product) return;
 
   const images = await getDb()
     .select({ key: productImages.key })
@@ -172,6 +203,9 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   await getDb().delete(products).where(eq(products.id, id));
 
   for (const image of images) await removeImage(image.key).catch(() => undefined);
+  for (const key of [product.bannerWideKey, product.bannerTallKey]) {
+    if (key) await removeImage(key).catch(() => undefined);
+  }
 
   updateTag(tags.products);
   updateTag(tags.featured);
