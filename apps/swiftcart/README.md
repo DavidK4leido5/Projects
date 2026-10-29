@@ -37,11 +37,11 @@ Each item carries up to ten previews in `product_images`, ordered, with the firs
 go through `/api/upload`, so every preview lands in object storage and Cloudinary. Removing a preview,
 or deleting the item, removes the objects from both stores rather than orphaning them.
 
-Featuring an item requires two art-directed banners: 5:2 (2500x1000) for desktop and 9:16
-(1080x1920) for mobile, both mandatory. The ratios are derived from the display: the desktop hero band
-is `clamp(300px,40vw,560px)` tall, which is 2.5:1 across ordinary desktop widths, so 5:2 art fills it
-without cropping. The ratio is checked in the browser before upload; the action refuses a featured item
-missing either banner.
+Featuring an item requires two art-directed banners: a wide landscape for desktop and a portrait for
+mobile, both mandatory. The uploads accept a range rather than one exact size (desktop 1.6:1 to 3.4:1,
+mobile 0.45:1 to 0.7:1) because the hero centres and crops with `object-cover`, so any image composed
+for that shape lands gracefully. 5:2 (2500x1000) and 9:16 (1080x1920) are the shapes the band and the
+phone frame were designed around.
 
 ## Images
 

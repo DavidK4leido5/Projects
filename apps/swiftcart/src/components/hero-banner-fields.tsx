@@ -7,24 +7,37 @@ import { Button } from "@repo/ui";
 
 type Slot = "wide" | "tall";
 
-const SLOTS: { slot: Slot; label: string; ratio: number; hint: string; frame: string }[] = [
+type SlotConfig = {
+  slot: Slot;
+  label: string;
+  min: number;
+  max: number;
+  hint: string;
+  frame: string;
+};
+
+/**
+ * The hero crops with object-cover and centres, so the artwork only has to be
+ * composed for a wide band rather than delivered at one exact size.
+ */
+const SLOTS: SlotConfig[] = [
   {
     slot: "wide",
     label: "Desktop banner",
-    ratio: 5 / 2,
-    hint: "5:2, 2500x1000 recommended",
+    min: 1.6,
+    max: 3.4,
+    hint: "wide landscape, 5:2 ideal",
     frame: "aspect-[5/2]",
   },
   {
     slot: "tall",
     label: "Mobile banner",
-    ratio: 9 / 16,
-    hint: "9:16, 1080x1920 recommended",
+    min: 0.45,
+    max: 0.7,
+    hint: "portrait, 9:16 ideal",
     frame: "aspect-[9/16]",
   },
 ];
-
-const TOLERANCE = 0.02;
 
 async function readSize(file: File): Promise<{ width: number; height: number }> {
   if (typeof createImageBitmap === "function") {
@@ -78,11 +91,17 @@ export function HeroBannerFields({
     try {
       const { width, height } = await readSize(file);
       const ratio = width / height;
-      if (Math.abs(ratio - config.ratio) / config.ratio > TOLERANCE) {
+      if (ratio < config.min || ratio > config.max) {
         setErrors((current) => ({
           ...current,
           [slot]:
-            "That image is " + width + "x" + height + ". The banner must be " + config.hint + ".",
+            "That image is " +
+            width +
+            "x" +
+            height +
+            ". Use a " +
+            config.hint +
+            " image; it is centred and cropped to fit.",
         }));
         return;
       }

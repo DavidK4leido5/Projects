@@ -84,7 +84,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
                   sizes="100vw"
                   alt={slide.name}
                   fetchPriority={active ? "high" : "low"}
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover object-center"
                 />
               </picture>
             </Link>
