@@ -1,14 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { Fragment, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, X } from "lucide-react";
 import { Button, Checkbox } from "@repo/ui";
 import type { ProductProperty } from "@/lib/db/schema";
 
-type ValueRow = { id: string; name: string; imageKey: string };
-type SubRow = { id: string; name: string };
-type Leaf = { price: string; stock: string; sku: string; imageKey: string };
+type LeafFields = { price: string; stock: string; sku: string; imageKey: string };
+type Child = LeafFields & { id: string; name: string };
+type Parent = LeafFields & { id: string; name: string; children: Child[] };
 
 type InitialVariant = {
   options: Record<string, string>;
@@ -18,16 +18,25 @@ type InitialVariant = {
   imageKey: string | null;
 };
 
-const EMPTY_LEAF: Leaf = { price: "", stock: "0", sku: "", imageKey: "" };
+const EMPTY: LeafFields = { price: "", stock: "0", sku: "", imageKey: "" };
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 9);
 }
 
+function fieldsOf(variant: InitialVariant): LeafFields {
+  return {
+    price: variant.priceCents ? (variant.priceCents / 100).toFixed(2) : "",
+    stock: String(variant.stock),
+    sku: variant.sku ?? "",
+    imageKey: variant.imageKey ?? "",
+  };
+}
+
 /**
- * One table, typed directly. The group row names the variation ("Color"), each
- * row under it is a value, and every value can take the same second-level list
- * ("Size"). Leaves are the combinations and carry price, stock, and image.
+ * Values are nodes. Each one owns its own children, so Bone can carry three
+ * sizes while Black carries two. The table shows those attachments; every leaf
+ * is one purchasable combination with its own price, stock, and preview.
  */
 export function VariantFields({
   initialProperties,
@@ -38,135 +47,123 @@ export function VariantFields({
 }) {
   const [enabled, setEnabled] = useState(initialProperties.length > 0);
   const [groupName, setGroupName] = useState(initialProperties[0]?.name ?? "Color");
-  const [subName, setSubName] = useState(initialProperties[1]?.name ?? "Size");
-  const [hasSub, setHasSub] = useState(Boolean(initialProperties[1]));
+  const [childName, setChildName] = useState(initialProperties[1]?.name ?? "Size");
 
-  const [values, setValues] = useState<ValueRow[]>(() => {
-    const names = initialProperties[0]?.values ?? [];
-    return names.map((name) => {
-      const match = initialVariants.find(
-        (variant) => variant.options[initialProperties[0]!.name] === name,
-      );
-      return { id: uid(), name, imageKey: match?.imageKey ?? "" };
-    });
-  });
-
-  const [subs, setSubs] = useState<SubRow[]>(() =>
-    (initialProperties[1]?.values ?? []).map((name) => ({ id: uid(), name })),
-  );
-
-  const [leaves, setLeaves] = useState<Record<string, Leaf>>(() => {
-    const map: Record<string, Leaf> = {};
-    if (initialProperties.length === 0) return map;
-    const first = initialProperties[0]!;
+  const [parents, setParents] = useState<Parent[]>(() => {
+    const first = initialProperties[0];
     const second = initialProperties[1];
+    if (!first) return [];
+
+    const byValue = new Map<string, Parent>();
+    for (const name of first.values) {
+      byValue.set(name, { id: uid(), name, ...EMPTY, children: [] });
+    }
 
     for (const variant of initialVariants) {
-      const value = variant.options[first.name] ?? "";
-      const sub = second ? (variant.options[second.name] ?? "") : "";
-      const key = sub ? value + "||" + sub : value;
-      map[key] = {
-        price: variant.priceCents ? (variant.priceCents / 100).toFixed(2) : "",
-        stock: String(variant.stock),
-        sku: variant.sku ?? "",
-        imageKey: variant.imageKey ?? "",
-      };
+      const parent = byValue.get(variant.options[first.name] ?? "");
+      if (!parent) continue;
+      const childValue = second ? (variant.options[second.name] ?? "") : "";
+      if (childValue) {
+        parent.children.push({ id: uid(), name: childValue, ...fieldsOf(variant) });
+      } else {
+        Object.assign(parent, fieldsOf(variant));
+      }
     }
-    return map;
+
+    return [...byValue.values()];
   });
 
-  const [draftValue, setDraftValue] = useState("");
-  const [draftSub, setDraftSub] = useState("");
+  const [draftParent, setDraftParent] = useState("");
+  const [openChildFor, setOpenChildFor] = useState<string | null>(null);
+  const [draftChild, setDraftChild] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  function leafKey(valueName: string, subNameValue: string): string {
-    return subNameValue ? valueName + "||" + subNameValue : valueName;
-  }
+  const patchParent = (id: string, patch: Partial<Parent>) =>
+    setParents((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
 
-  function leafOf(valueName: string, subNameValue: string): Leaf {
-    return leaves[leafKey(valueName, subNameValue)] ?? EMPTY_LEAF;
-  }
+  const patchChild = (parentId: string, childId: string, patch: Partial<Child>) =>
+    setParents((current) =>
+      current.map((row) =>
+        row.id === parentId
+          ? {
+              ...row,
+              children: row.children.map((child) =>
+                child.id === childId ? { ...child, ...patch } : child,
+              ),
+            }
+          : row,
+      ),
+    );
 
-  function setLeaf(valueName: string, subNameValue: string, patch: Partial<Leaf>) {
-    const key = leafKey(valueName, subNameValue);
-    setLeaves((current) => ({ ...current, [key]: { ...(current[key] ?? EMPTY_LEAF), ...patch } }));
-  }
-
-  function addValue() {
-    const name = draftValue.trim();
+  function addParent() {
+    const name = draftParent.trim();
     if (!name) return;
-    if (values.some((value) => value.name.toLowerCase() === name.toLowerCase())) return;
-    setValues((current) => [...current, { id: uid(), name, imageKey: "" }]);
-    setDraftValue("");
+    if (parents.some((row) => row.name.toLowerCase() === name.toLowerCase())) return;
+    setParents((current) => [...current, { id: uid(), name, ...EMPTY, children: [] }]);
+    setDraftParent("");
   }
 
-  function addSub() {
-    const name = draftSub.trim();
+  function addChild(parentId: string) {
+    const name = draftChild.trim();
     if (!name) return;
-    if (subs.some((sub) => sub.name.toLowerCase() === name.toLowerCase())) return;
-    setSubs((current) => [...current, { id: uid(), name }]);
-    setDraftSub("");
+    setParents((current) =>
+      current.map((row) => {
+        if (row.id !== parentId) return row;
+        if (row.children.some((child) => child.name.toLowerCase() === name.toLowerCase()))
+          return row;
+        return { ...row, children: [...row.children, { id: uid(), name, ...EMPTY }] };
+      }),
+    );
+    setDraftChild("");
   }
 
-  async function uploadValue(valueId: string, file: File | undefined) {
+  async function upload(key: string, file: File | undefined, apply: (imageKey: string) => void) {
     if (!file) return;
-    setBusy(valueId);
+    setBusy(key);
     try {
       const body = new FormData();
       body.set("file", file);
       const response = await fetch("/api/upload", { method: "POST", body });
       const payload = (await response.json()) as { key?: string };
-      if (payload.key) {
-        setValues((current) =>
-          current.map((value) =>
-            value.id === valueId ? { ...value, imageKey: payload.key! } : value,
-          ),
-        );
-      }
+      if (payload.key) apply(payload.key);
     } finally {
       setBusy(null);
     }
   }
 
-  async function uploadLeaf(valueName: string, subNameValue: string, file: File | undefined) {
-    if (!file) return;
-    setBusy(leafKey(valueName, subNameValue));
-    try {
-      const body = new FormData();
-      body.set("file", file);
-      const response = await fetch("/api/upload", { method: "POST", body });
-      const payload = (await response.json()) as { key?: string };
-      if (payload.key) setLeaf(valueName, subNameValue, { imageKey: payload.key });
-    } finally {
-      setBusy(null);
-    }
-  }
+  const childValues = [
+    ...new Set(parents.flatMap((row) => row.children.map((child) => child.name))),
+  ];
+  const group = groupName.trim() || "Option";
+  const subGroup = childName.trim() || "Size";
 
   const properties: ProductProperty[] = enabled
     ? [
-        { name: groupName.trim() || "Option", values: values.map((value) => value.name) },
-        ...(hasSub && subs.length > 0
-          ? [{ name: subName.trim() || "Size", values: subs.map((sub) => sub.name) }]
-          : []),
+        { name: group, values: parents.map((row) => row.name) },
+        ...(childValues.length > 0 ? [{ name: subGroup, values: childValues }] : []),
       ]
     : [];
 
   const payload = enabled
-    ? values.flatMap((value) => {
-        const combos = hasSub && subs.length > 0 ? subs.map((sub) => sub.name) : [""];
-        return combos.map((sub) => {
-          const leaf = leafOf(value.name, sub);
-          const options: Record<string, string> = { [groupName.trim() || "Option"]: value.name };
-          if (sub) options[subName.trim() || "Size"] = sub;
-          return {
-            options,
-            price: leaf.price,
-            stock: Number(leaf.stock || 0),
-            sku: leaf.sku,
-            imageKey: leaf.imageKey || value.imageKey,
-          };
-        });
-      })
+    ? parents.flatMap((row) =>
+        row.children.length === 0
+          ? [
+              {
+                options: { [group]: row.name },
+                price: row.price,
+                stock: Number(row.stock || 0),
+                sku: row.sku,
+                imageKey: row.imageKey,
+              },
+            ]
+          : row.children.map((child) => ({
+              options: { [group]: row.name, [subGroup]: child.name },
+              price: child.price,
+              stock: Number(child.stock || 0),
+              sku: child.sku,
+              imageKey: child.imageKey || row.imageKey,
+            })),
+      )
     : [];
 
   return (
@@ -183,229 +180,255 @@ export function VariantFields({
         <span className="flex flex-col gap-0.5">
           <span className="text-sm font-medium">This item has variations</span>
           <span className="text-xs text-muted-foreground">
-            Type the rows directly. Each combination gets its own price, stock, and preview.
+            Add values, then attach sub-values to the ones that have them. Each combination gets its
+            own price and stock.
           </span>
         </span>
       </label>
 
       {enabled ? (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               value={groupName}
               onChange={(event) => setGroupName(event.target.value)}
-              placeholder="Variation name"
-              className="h-8 w-40 rounded-md border border-border px-2 text-sm font-medium"
+              placeholder="Variation"
+              className="h-8 w-32 rounded-md border border-border px-2 text-sm font-medium"
             />
-            <div className="flex items-center gap-2">
-              <input
-                value={draftValue}
-                onChange={(event) => setDraftValue(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addValue();
-                  }
-                }}
-                placeholder="Add value, press Enter"
-                className="h-8 w-48 rounded-md border border-border px-2 text-xs"
-              />
-              <Button type="button" size="sm" variant="ghost" onClick={addValue}>
-                <Plus />
-                Add
-              </Button>
-            </div>
+            <input
+              value={draftParent}
+              onChange={(event) => setDraftParent(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addParent();
+                }
+              }}
+              placeholder="Add value, press Enter"
+              className="h-8 w-48 rounded-md border border-border px-2 text-xs"
+            />
+            <Button type="button" size="sm" variant="ghost" onClick={addParent}>
+              <Plus />
+              Add
+            </Button>
+            {childValues.length > 0 ? (
+              <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                sub-values are
+                <input
+                  value={childName}
+                  onChange={(event) => setChildName(event.target.value)}
+                  className="h-7 w-24 rounded-md border border-border px-2 text-xs"
+                />
+              </span>
+            ) : null}
           </div>
 
-          <div className="overflow-hidden rounded-md border border-border">
+          <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-xs">
               <thead className="bg-muted/40 text-left text-muted-foreground">
                 <tr>
-                  <th className="px-2 py-2 font-medium">{groupName || "Option"}</th>
+                  <th className="px-2 py-2 font-medium">{group}</th>
                   <th className="px-2 py-2 font-medium">Price</th>
                   <th className="px-2 py-2 font-medium">Stock</th>
                   <th className="px-2 py-2 font-medium">SKU</th>
                   <th className="px-2 py-2 font-medium">Preview</th>
-                  <th className="w-8 px-2 py-2" />
+                  <th className="w-12 px-2 py-2" />
                 </tr>
               </thead>
               <tbody>
-                {values.length === 0 ? (
+                {parents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
                       Add a value like Bone or Black.
                     </td>
                   </tr>
                 ) : null}
+              </tbody>
 
-                {values.map((value) => {
-                  const single = !hasSub || subs.length === 0;
-                  return (
-                    <Fragment key={value.id}>
-                      <tr className="border-t border-border bg-muted/20">
-                        <td className="px-2 py-2 font-medium">{value.name}</td>
-                        {single ? (
-                          <>
-                            <td className="px-2 py-2">
-                              <PriceInput
-                                value={leafOf(value.name, "").price}
-                                onChange={(price) => setLeaf(value.name, "", { price })}
-                              />
-                            </td>
-                            <td className="px-2 py-2">
-                              <StockInput
-                                value={leafOf(value.name, "").stock}
-                                onChange={(stock) => setLeaf(value.name, "", { stock })}
-                              />
-                            </td>
-                            <td className="px-2 py-2">
-                              <SkuInput
-                                value={leafOf(value.name, "").sku}
-                                onChange={(sku) => setLeaf(value.name, "", { sku })}
-                              />
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-2 py-2 text-muted-foreground" colSpan={3}>
-                              {subs.length} {subs.length === 1 ? "combination" : "combinations"}{" "}
-                              below
-                            </td>
-                          </>
-                        )}
-                        <td className="px-2 py-2">
-                          <PreviewCell
-                            value={value.imageKey}
-                            busy={busy === value.id}
-                            onPick={(file) => void uploadValue(value.id, file)}
-                            onClear={() =>
-                              setValues((current) =>
-                                current.map((row) =>
-                                  row.id === value.id ? { ...row, imageKey: "" } : row,
-                                ),
+              {parents.map((row) => {
+                const hasChildren = row.children.length > 0;
+                return (
+                  <tbody key={row.id} className="border-t border-border">
+                    <tr className="bg-muted/20">
+                      <td className="px-2 py-2 font-medium">{row.name}</td>
+                      {hasChildren ? (
+                        <td className="px-2 py-2 text-muted-foreground" colSpan={3}>
+                          {row.children.length}{" "}
+                          {row.children.length === 1 ? "combination" : "combinations"}
+                        </td>
+                      ) : (
+                        <>
+                          <td className="px-2 py-2">
+                            <Field
+                              label="Variant price"
+                              value={row.price}
+                              onChange={(v) => patchParent(row.id, { price: v })}
+                              placeholder="base"
+                              width="w-20"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <Field
+                              label="Variant stock"
+                              value={row.stock}
+                              onChange={(v) => patchParent(row.id, { stock: v })}
+                              width="w-16"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <Field
+                              label="Variant SKU"
+                              value={row.sku}
+                              onChange={(v) => patchParent(row.id, { sku: v })}
+                              width="w-24"
+                            />
+                          </td>
+                        </>
+                      )}
+                      <td className="px-2 py-2">
+                        <Preview
+                          value={row.imageKey}
+                          busy={busy === row.id}
+                          onPick={(file) =>
+                            void upload(row.id, file, (key) =>
+                              patchParent(row.id, { imageKey: key }),
+                            )
+                          }
+                          onClear={() => patchParent(row.id, { imageKey: "" })}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={"Add sub-value to " + row.name}
+                            onClick={() => {
+                              setOpenChildFor(openChildFor === row.id ? null : row.id);
+                              setDraftChild("");
+                            }}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={"Remove " + row.name}
+                            onClick={() =>
+                              setParents((current) =>
+                                current.filter((entry) => entry.id !== row.id),
                               )
                             }
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {openChildFor === row.id ? (
+                      <tr className="border-t border-border">
+                        <td className="px-2 py-2" colSpan={6}>
+                          <div className="flex items-center gap-2 pl-4">
+                            <input
+                              autoFocus
+                              value={draftChild}
+                              onChange={(event) => setDraftChild(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  addChild(row.id);
+                                }
+                                if (event.key === "Escape") setOpenChildFor(null);
+                              }}
+                              placeholder={subGroup + " for " + row.name + ", press Enter"}
+                              className="h-7 w-64 rounded-md border border-border px-2 text-xs"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => addChild(row.id)}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+
+                    {row.children.map((child) => (
+                      <tr key={child.id} className="border-t border-border">
+                        <td className="py-2 pl-6 pr-2 text-muted-foreground">{child.name}</td>
+                        <td className="px-2 py-2">
+                          <Field
+                            label="Variant price"
+                            value={child.price}
+                            onChange={(v) => patchChild(row.id, child.id, { price: v })}
+                            placeholder="base"
+                            width="w-20"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <Field
+                            label="Variant stock"
+                            value={child.stock}
+                            onChange={(v) => patchChild(row.id, child.id, { stock: v })}
+                            width="w-16"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <Field
+                            label="Variant SKU"
+                            value={child.sku}
+                            onChange={(v) => patchChild(row.id, child.id, { sku: v })}
+                            width="w-24"
+                          />
+                        </td>
+                        <td className="px-2 py-2">
+                          <Preview
+                            value={child.imageKey}
+                            busy={busy === child.id}
+                            onPick={(file) =>
+                              void upload(child.id, file, (key) =>
+                                patchChild(row.id, child.id, { imageKey: key }),
+                              )
+                            }
+                            onClear={() => patchChild(row.id, child.id, { imageKey: "" })}
                           />
                         </td>
                         <td className="px-2 py-2">
                           <button
                             type="button"
-                            aria-label={"Remove " + value.name}
+                            aria-label={"Remove " + child.name}
                             onClick={() =>
-                              setValues((current) => current.filter((row) => row.id !== value.id))
+                              setParents((current) =>
+                                current.map((entry) =>
+                                  entry.id === row.id
+                                    ? {
+                                        ...entry,
+                                        children: entry.children.filter(
+                                          (item) => item.id !== child.id,
+                                        ),
+                                      }
+                                    : entry,
+                                ),
+                              )
                             }
                           >
                             <X className="h-3 w-3" />
                           </button>
                         </td>
                       </tr>
-
-                      {!single
-                        ? subs.map((sub) => {
-                            const leaf = leafOf(value.name, sub.name);
-                            return (
-                              <tr key={value.id + sub.id} className="border-t border-border">
-                                <td className="py-2 pl-6 pr-2 text-muted-foreground">{sub.name}</td>
-                                <td className="px-2 py-2">
-                                  <PriceInput
-                                    value={leaf.price}
-                                    onChange={(price) => setLeaf(value.name, sub.name, { price })}
-                                  />
-                                </td>
-                                <td className="px-2 py-2">
-                                  <StockInput
-                                    value={leaf.stock}
-                                    onChange={(stock) => setLeaf(value.name, sub.name, { stock })}
-                                  />
-                                </td>
-                                <td className="px-2 py-2">
-                                  <SkuInput
-                                    value={leaf.sku}
-                                    onChange={(sku) => setLeaf(value.name, sub.name, { sku })}
-                                  />
-                                </td>
-                                <td className="px-2 py-2">
-                                  <PreviewCell
-                                    value={leaf.imageKey}
-                                    busy={busy === leafKey(value.name, sub.name)}
-                                    onPick={(file) => void uploadLeaf(value.name, sub.name, file)}
-                                    onClear={() => setLeaf(value.name, sub.name, { imageKey: "" })}
-                                  />
-                                </td>
-                                <td />
-                              </tr>
-                            );
-                          })
-                        : null}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
+                    ))}
+                  </tbody>
+                );
+              })}
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                setHasSub((current) => {
-                  const next = !current;
-                  if (next && subName.trim().toLowerCase() === groupName.trim().toLowerCase()) {
-                    setSubName(groupName.trim().toLowerCase() === "color" ? "Size" : "Color");
-                  }
-                  return next;
-                })
-              }
-            >
-              {hasSub ? "Remove second variation" : "Add a second variation"}
-            </Button>
-
-            {hasSub ? (
-              <>
-                <input
-                  value={subName}
-                  onChange={(event) => setSubName(event.target.value)}
-                  placeholder="Size"
-                  className="h-8 w-28 rounded-md border border-border px-2 text-xs font-medium"
-                />
-                {subs.map((sub) => (
-                  <span
-                    key={sub.id}
-                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
-                  >
-                    {sub.name}
-                    <button
-                      type="button"
-                      aria-label={"Remove " + sub.name}
-                      onClick={() =>
-                        setSubs((current) => current.filter((row) => row.id !== sub.id))
-                      }
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={draftSub}
-                  onChange={(event) => setDraftSub(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addSub();
-                    }
-                  }}
-                  placeholder="Add size, press Enter"
-                  className="h-8 w-40 rounded-md border border-border px-2 text-xs"
-                />
-              </>
-            ) : null}
-          </div>
-
           <p className="text-xs text-muted-foreground">
-            Blank price uses the item price. The second variation is shared by every value above it,
-            so the buyer never sees a combination that does not exist.
+            A row with no sub-values sells on its own. Sub-values belong to that row only, so Black
+            can offer two sizes while Bone offers three.
           </p>
         </>
       ) : null}
@@ -413,40 +436,31 @@ export function VariantFields({
   );
 }
 
-function PriceInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function Field({
+  value,
+  onChange,
+  placeholder,
+  width,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  width: string;
+  label: string;
+}) {
   return (
     <input
+      aria-label={label}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      placeholder="base"
-      inputMode="decimal"
-      className="h-7 w-20 rounded-md border border-border px-2 text-xs"
+      placeholder={placeholder}
+      className={"h-7 rounded-md border border-border px-2 text-xs " + width}
     />
   );
 }
 
-function StockInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return (
-    <input
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      inputMode="numeric"
-      className="h-7 w-16 rounded-md border border-border px-2 text-xs"
-    />
-  );
-}
-
-function SkuInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return (
-    <input
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-7 w-24 rounded-md border border-border px-2 text-xs"
-    />
-  );
-}
-
-function PreviewCell({
+function Preview({
   value,
   busy,
   onPick,
@@ -458,7 +472,6 @@ function PreviewCell({
   onClear: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-
   return (
     <div className="flex items-center gap-1">
       {value ? (

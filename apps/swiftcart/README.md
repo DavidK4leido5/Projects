@@ -72,26 +72,33 @@ the match is near exact.
 
 ## Item options
 
-An item can define up to three options, each with up to twenty values, and the combinations become
-variants. Nothing is fixed to clothing: one item has Size and Colour, the next has Roast and Grind, a
-third has none.
+An item can define up to three options, each with up to twenty values, but the combinations are not a
+forced cartesian product. Every value can own its own children, so `Black` can offer two sizes while
+`Bone` offers three, and a value with no children is sold on its own.
 
 ```
-products.properties   [{ "name": "Size", "values": ["S","M","L"] }]
-product_variants      one row per combination: options, price, stock, sku, image
+products.properties   [{ "name": "Color", "values": ["Bone","Black"] },
+                       { "name": "Size",  "values": ["S","M"] }]
+product_variants      one row per combination that actually exists:
+                      { Color: "Bone", Size: "S" }  stock 3
+                      { Color: "Bone", Size: "M" }  stock 4
+                      { Color: "Black", Size: "M" } stock 0
 ```
+
+The editor is a single table: type a value, press plus to attach sub-values to that value only, and
+give each leaf its own price, stock, SKU, and preview. A row with no children carries those fields
+itself.
 
 The variants table is what the cart, stock claiming, and orders use. `cart_items` is unique per
 (user, variant), and `order_items` stores the variant id plus a text snapshot of the chosen values,
 so renaming an option later never rewrites history.
 
+The product page prunes: choosing `Black` strikes out `S` because that combination does not exist,
+and a value with no children hides the second picker instead of showing an empty one.
+
 Products without options still get exactly one variant with empty options, which keeps the cart code
 on one path. `products.stock` is a rolled-up sum for cards and filters; the variant rows are
 authoritative.
-
-A variant image is optional. When a buyer picks that combination the main gallery image swaps to it.
-Setting an image on one row copies it to the other rows sharing the first option value, which is how
-colour variations avoid twelve separate uploads.
 
 ## Rendering and caching
 

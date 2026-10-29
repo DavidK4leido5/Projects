@@ -49,13 +49,47 @@ export function ProductDetail({
   });
   const [thumb, setThumb] = useState(0);
 
+  /** Picking a value can invalidate the others, so move them to a real combination. */
+  function choose(propertyName: string, value: string) {
+    setChosen((current) => {
+      const next = { ...current, [propertyName]: value };
+      for (const property of properties) {
+        if (property.name === propertyName) continue;
+        const stillValid = variants.some(
+          (variant) =>
+            variant.options[propertyName] === value &&
+            variant.options[property.name] === next[property.name],
+        );
+        if (stillValid) continue;
+        const fallback = variants.find(
+          (variant) => variant.options[propertyName] === value && variant.options[property.name],
+        );
+        if (fallback) next[property.name] = fallback.options[property.name]!;
+      }
+      return next;
+    });
+    setThumb(0);
+  }
+
+  // A variant may define fewer options than the item does, so it matches when
+  // everything it defines agrees with the current choice.
   const selected = useMemo(
     () =>
       variants.find((variant) =>
-        properties.every((property) => variant.options[property.name] === chosen[property.name]),
+        Object.entries(variant.options).every(([name, value]) => chosen[name] === value),
       ),
-    [variants, properties, chosen],
+    [variants, chosen],
   );
+
+  // If the chosen first value has no sub-values, the second picker is noise.
+  const firstProperty = properties[0];
+  const siblings = firstProperty
+    ? variants.filter(
+        (variant) => variant.options[firstProperty.name] === chosen[firstProperty.name],
+      )
+    : variants;
+  const hasSubValues = siblings.some((variant) => Object.keys(variant.options).length > 1);
+  const visibleProperties = hasSubValues ? properties : properties.slice(0, 1);
 
   const gallery = selected?.imageKey
     ? [selected.imageKey, ...images.filter((key) => key !== selected.imageKey)]
@@ -141,7 +175,7 @@ export function ProductDetail({
             : "Choose an option"}
         </p>
 
-        {properties.map((property) => (
+        {visibleProperties.map((property) => (
           <div key={property.name} className="flex w-full flex-col gap-2">
             <span className="text-xs font-medium text-muted-foreground">{property.name}</span>
             <div className="flex flex-wrap gap-2">
@@ -162,10 +196,7 @@ export function ProductDetail({
                   <button
                     key={value}
                     type="button"
-                    onClick={() => {
-                      setChosen((state) => ({ ...state, [property.name]: value }));
-                      setThumb(0);
-                    }}
+                    onClick={() => choose(property.name, value)}
                     aria-pressed={isChosen}
                     className={
                       "rounded-md border px-3 py-1.5 text-xs transition-colors " +

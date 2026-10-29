@@ -100,28 +100,12 @@ function combinationKey(options: VariantOptions): string {
     .join("|");
 }
 
-function expectedCombinations(properties: ProductProperty[]): VariantOptions[] {
-  if (properties.length === 0) return [{}];
-
-  let combos: VariantOptions[] = [{}];
-  for (const property of properties) {
-    const next: VariantOptions[] = [];
-    for (const combo of combos) {
-      for (const value of property.values) {
-        next.push({ ...combo, [property.name]: value });
-      }
-    }
-    combos = next;
-  }
-  return combos;
-}
-
 function parseVariants(
   formData: FormData,
   properties: ProductProperty[],
   fallbackStock: number,
 ): VariantInput[] | { error: string } {
-  const expected = expectedCombinations(properties);
+  const allowed = new Map(properties.map((property) => [property.name, new Set(property.values)]));
   const raw = text(formData, "variants");
 
   if (!raw) {
@@ -146,6 +130,14 @@ function parseVariants(
         ? (record.options as VariantOptions)
         : {};
 
+    for (const [name, value] of Object.entries(options)) {
+      const values = allowed.get(name);
+      if (!values || !values.has(value)) return { error: "Unknown option value: " + name + "." };
+    }
+    if (properties.length > 0 && Object.keys(options).length === 0) {
+      return { error: "Every combination needs at least one option value." };
+    }
+
     const stock = Number(record.stock ?? 0);
     if (!Number.isInteger(stock) || stock < 0) {
       return { error: "Variant stock must be a whole number, zero or more." };
@@ -168,13 +160,9 @@ function parseVariants(
     });
   }
 
-  const variants: VariantInput[] = [];
-  for (const combo of expected) {
-    const variant = byKey.get(combinationKey(combo));
-    if (!variant) return { error: "Some combinations are missing. Reopen the item and try again." };
-    variants.push(variant);
-  }
+  const variants = [...byKey.values()];
 
+  if (variants.length === 0) return { error: "Add at least one combination." };
   if (variants.length > 100) return { error: "An item can have at most 100 combinations." };
 
   return variants;
