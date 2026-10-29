@@ -1,137 +1,98 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
-import { Button, Card } from "@repo/ui";
+import { Button, Checkbox, Input, Label, Textarea } from "@repo/ui";
 import { emptyFormState, type FormState } from "@/lib/form";
-import { ImageUpload } from "@/components/image-upload";
+import { ProductImagesField } from "@/components/product-images-field";
+import type { StoreItem } from "@/features/products/queries";
 
 type ProductFormProps = {
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
-  product?: {
-    id: string;
-    name: string;
-    description: string;
-    priceCents: number;
-    stock: number;
-    featured: boolean;
-    imageKey: string | null;
-  };
+  product?: StoreItem;
+  onCancel: () => void;
 };
 
-const inputClass =
-  "rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition-colors focus:border-neutral-400";
-
-export function ProductForm({ action, product }: ProductFormProps) {
+export function ProductForm({ action, product, onCancel }: ProductFormProps) {
   const [state, formAction, pending] = useActionState(action, emptyFormState);
 
   return (
-    <Card>
-      <form action={formAction} className="flex flex-col gap-5">
-        {product ? <input type="hidden" name="id" value={product.id} /> : null}
+    <form action={formAction} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+      {product ? <input type="hidden" name="id" value={product.id} /> : null}
 
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="name">Name</Label>
+        <Input id="name" name="name" defaultValue={product?.name} required />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="name" className="text-sm font-medium text-neutral-900">
-            Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            defaultValue={product?.name}
-            className={inputClass}
+          <Label htmlFor="price">Price</Label>
+          <Input
+            id="price"
+            name="price"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={product ? (product.priceCents / 100).toFixed(2) : undefined}
+            required
           />
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="price" className="text-sm font-medium text-neutral-900">
-              Price
-            </label>
-            <input
-              id="price"
-              name="price"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={product ? (product.priceCents / 100).toFixed(2) : undefined}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="stock" className="text-sm font-medium text-neutral-900">
-              Stock
-            </label>
-            <input
-              id="stock"
-              name="stock"
-              type="number"
-              step="1"
-              min="0"
-              defaultValue={product ? product.stock : 1}
-              className={inputClass}
-            />
-            <span className="text-xs text-neutral-500">
-              Reaching zero hides the add to cart button.
-            </span>
-          </div>
-        </div>
-
-        <label className="flex items-start gap-3 rounded-md border border-neutral-200 px-3 py-2.5">
-          <input
-            type="checkbox"
-            name="featured"
-            defaultChecked={product?.featured ?? false}
-            className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="stock">Stock</Label>
+          <Input
+            id="stock"
+            name="stock"
+            type="number"
+            step="1"
+            min="0"
+            defaultValue={product ? product.stock : 1}
+            required
           />
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-neutral-900">Feature in the hero</span>
-            <span className="text-xs text-neutral-500">
-              Featured products with an image rotate at the top of the shop.
-            </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          name="description"
+          rows={5}
+          defaultValue={product?.description}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Previews</Label>
+        <ProductImagesField initial={product?.images ?? []} />
+      </div>
+
+      <label className="flex items-start gap-3 rounded-md border border-border px-3 py-2.5">
+        <Checkbox name="featured" defaultChecked={product?.featured ?? false} className="mt-0.5" />
+        <span className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium">Feature in the hero</span>
+          <span className="text-xs text-muted-foreground">
+            Featured products with a cover image rotate at the top of the shop.
           </span>
-        </label>
+        </span>
+      </label>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="description" className="text-sm font-medium text-neutral-900">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={5}
-            defaultValue={product?.description}
-            className={inputClass}
-          />
-        </div>
+      {state.error ? (
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          {state.error}
+        </p>
+      ) : null}
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-neutral-900">Image</span>
-          <ImageUpload initialKey={product?.imageKey ?? null} />
-        </div>
-
-        {state.error ? (
-          <p
-            role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
-            {state.error}
-          </p>
-        ) : null}
-
-        <div className="flex items-center gap-2">
-          <Button type="submit" disabled={pending}>
-            {product ? "Save changes" : "Create product"}
-          </Button>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100"
-          >
-            Cancel
-          </Link>
-        </div>
-      </form>
-    </Card>
+      <div className="mt-auto flex items-center gap-2 border-t border-border pt-4">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving" : product ? "Save changes" : "Create item"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

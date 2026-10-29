@@ -3,10 +3,11 @@
 import { and, eq, ne } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { getDb } from "@/lib/db";
-import { products, profiles, stores } from "@/lib/db/schema";
+import { productImages, products, profiles, stores } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { slugify } from "@/lib/slug";
 import { tags } from "@/lib/cache";
+import { removeImage } from "@/lib/media";
 
 export type AdminFormState = { error?: string; warning?: string; ok?: boolean };
 
@@ -183,6 +184,14 @@ export async function deleteAnyProduct(formData: FormData): Promise<void> {
   const id = text(formData, "id");
   if (!id) return;
 
+  const images = await getDb()
+    .select({ key: productImages.key })
+    .from(productImages)
+    .where(eq(productImages.productId, id));
+
   await getDb().delete(products).where(eq(products.id, id));
+
+  for (const image of images) await removeImage(image.key).catch(() => undefined);
+
   updateTag(tags.products);
 }

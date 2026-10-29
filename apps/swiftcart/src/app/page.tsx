@@ -11,12 +11,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Cat
   // Cached read: keeps the hero inside the prerendered shell.
   const featured = await listFeaturedProducts();
   const heroSlides = featured.map((item) => {
-    const art = imageSources(item.imageKey, 1600);
+    const art = imageSources(item.coverKey, 1600);
     return {
       id: item.id,
       slug: item.slug,
       name: item.name,
-      src: art ? art.src : "/api/images/" + item.imageKey,
+      src: art ? art.src : "/api/images/" + item.coverKey,
       srcSet: art?.srcSet,
     };
   });

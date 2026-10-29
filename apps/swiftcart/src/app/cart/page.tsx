@@ -55,11 +55,11 @@ async function CartPageBody({ searchParams }: { searchParams: Promise<{ error?: 
               <li key={item.id}>
                 <Card className="flex flex-wrap items-center gap-4">
                   <Link href={`/products/${item.productSlug}`} className="shrink-0">
-                    {item.imageKey ? (
+                    {item.coverKey ? (
                       <img
                         src={(() => {
-                          const art = imageSources(item.imageKey, 160);
-                          return art ? art.src : "/api/images/" + item.imageKey;
+                          const art = imageSources(item.coverKey, 160);
+                          return art ? art.src : "/api/images/" + item.coverKey;
                         })()}
                         alt={item.productName}
                         className="h-16 w-16 rounded-md border border-neutral-200 object-cover"

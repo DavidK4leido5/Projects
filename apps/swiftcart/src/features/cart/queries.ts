@@ -1,8 +1,8 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { cartItems, products, stores } from "@/lib/db/schema";
+import { cartItems, productImages, products, stores } from "@/lib/db/schema";
 
 export async function getCart(userId: string) {
   const rows = await getDb()
@@ -13,7 +13,9 @@ export async function getCart(userId: string) {
       productName: products.name,
       productSlug: products.slug,
       priceCents: products.priceCents,
-      imageKey: products.imageKey,
+      coverKey: sql<
+        string | null
+      >`(select pi.key from ${productImages} pi where pi.product_id = ${products.id} order by pi.position limit 1)`,
       stock: products.stock,
       storeName: stores.name,
       storeSlug: stores.slug,

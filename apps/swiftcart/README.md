@@ -16,6 +16,27 @@ One account, one role.
 | `store` | CRUD the products of the one store it owns        | `/dashboard` |
 | `user`  | Browse, and keep a cart tied to the account       | `/`          |
 
+## Component layer
+
+Every component comes from shadcn. The vendored source lives in `packages/ui` with a
+`components.json`, a CSS variable theme (`@repo/ui/styles.css`), and Radix underneath. Apps import
+from `@repo/ui` and never keep a local copy, so the next app in the monorepo inherits the same
+primitives. A component that shadcn does not ship is composed from primitives in the same package
+rather than written from scratch.
+
+The theme maps shadcn's tokens onto the neutral palette the app already used, so adopting it did not
+change the look.
+
+## Item management
+
+`/dashboard` is the only seller screen. It lists items in a shadcn Table with cover, price, stock,
+preview count, a Hero badge, and row actions. Adding and editing open the same Sheet; there are no
+`/dashboard/products/new` or `/[id]/edit` routes. Deleting goes through an AlertDialog.
+
+Each item carries up to ten previews in `product_images`, ordered, with the first as cover. Uploads
+go through `/api/upload`, so every preview lands in object storage and Cloudinary. Removing a preview,
+or deleting the item, removes the objects from both stores rather than orphaning them.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial

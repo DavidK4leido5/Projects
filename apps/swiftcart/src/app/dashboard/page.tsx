@@ -1,103 +1,52 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { formatDate, formatMoney } from "@repo/shared";
-import { Button, Card, CardTitle } from "@repo/ui";
-import { listStoreProducts } from "@/features/catalog/queries";
-import { deleteProduct } from "@/features/products/actions";
-import { requireStoreOwner } from "@/lib/auth/guards";
+import { formatMoney } from "@repo/shared";
+import { Card, CardContent, CardTitle } from "@repo/ui";
 import { PageSkeleton } from "@/components/skeletons";
-
-async function DashboardPageBody() {
-  const actor = await requireStoreOwner();
-  const items = await listStoreProducts(actor.store.id);
-  const catalogueValue = items.reduce((total, item) => total + item.priceCents, 0);
-
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="flex flex-col gap-1">
-          <CardTitle className="text-sm font-medium text-neutral-600">Total products</CardTitle>
-          <p className="text-2xl font-semibold tracking-tight">{items.length}</p>
-        </Card>
-        <Card className="flex flex-col gap-1">
-          <CardTitle className="text-sm font-medium text-neutral-600">Catalogue value</CardTitle>
-          <p className="text-2xl font-semibold tracking-tight">{formatMoney(catalogueValue)}</p>
-        </Card>
-      </div>
-
-      {items.length === 0 ? (
-        <Card className="flex flex-col items-start gap-3">
-          <CardTitle>No products yet</CardTitle>
-          <p className="text-sm text-neutral-600">
-            Add your first listing and it will show up on your store page.
-          </p>
-          <Link href="/dashboard/products/new">
-            <Button>Add a product</Button>
-          </Link>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
-              <tr>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Product
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Price
-                </th>
-                <th scope="col" className="px-5 py-3 font-medium">
-                  Added
-                </th>
-                <th scope="col" className="px-5 py-3 text-right font-medium">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200">
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-5 py-3 font-medium text-neutral-900">
-                    {item.name}
-                    {item.featured ? (
-                      <span className="ml-2 rounded bg-neutral-900 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
-                        Hero
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-5 py-3 text-neutral-600">{formatMoney(item.priceCents)}</td>
-                  <td className="px-5 py-3 text-neutral-600">{item.stock}</td>
-                  <td className="px-5 py-3 text-neutral-600">{formatDate(item.createdAt)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link
-                        href={"/dashboard/products/" + item.id + "/edit"}
-                        className="rounded-md px-2 py-1 font-medium text-neutral-900 underline-offset-4 hover:bg-neutral-100"
-                      >
-                        Edit
-                      </Link>
-                      <form action={deleteProduct}>
-                        <input type="hidden" name="id" value={item.id} />
-                        <Button variant="ghost" type="submit" className="px-2 py-1">
-                          Delete
-                        </Button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-    </div>
-  );
-}
+import { ProductManager } from "@/components/product-manager";
+import { listStoreItems } from "@/features/products/queries";
+import { requireStoreOwner } from "@/lib/auth/guards";
 
 export default function DashboardPage() {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <DashboardPageBody />
+      <DashboardBody />
     </Suspense>
+  );
+}
+
+async function DashboardBody() {
+  const actor = await requireStoreOwner();
+  const items = await listStoreItems(actor.store.id);
+  const catalogueValue = items.reduce((total, item) => total + item.priceCents * item.stock, 0);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex flex-col gap-1 pt-5">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Items</CardTitle>
+            <p className="text-2xl font-semibold tracking-tight tabular-nums">{items.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col gap-1 pt-5">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Stock value</CardTitle>
+            <p className="text-2xl font-semibold tracking-tight tabular-nums">
+              {formatMoney(catalogueValue)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col gap-1 pt-5">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Featured</CardTitle>
+            <p className="text-2xl font-semibold tracking-tight tabular-nums">
+              {items.filter((item) => item.featured).length}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <ProductManager items={items} />
+    </div>
   );
 }

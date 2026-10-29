@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, asc, desc, eq, gt, ilike, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/lib/db";
-import { products, stores } from "@/lib/db/schema";
+import { productImages, products, stores } from "@/lib/db/schema";
 import { lifetimes, tags } from "@/lib/cache";
 
 const productColumns = {
@@ -14,7 +14,9 @@ const productColumns = {
   priceCents: products.priceCents,
   stock: products.stock,
   featured: products.featured,
-  imageKey: products.imageKey,
+  coverKey: sql<
+    string | null
+  >`(select pi.key from ${productImages} pi where pi.product_id = ${products.id} order by pi.position limit 1)`,
   createdAt: products.createdAt,
   storeName: stores.name,
   storeSlug: stores.slug,
@@ -103,7 +105,7 @@ export type HeroSlideModel = {
   id: string;
   slug: string;
   name: string;
-  imageKey: string;
+  coverKey: string;
 };
 
 /** Featured products that have artwork, newest first. These drive the hero. */
@@ -118,15 +120,22 @@ export async function listFeaturedProducts(limit = 8): Promise<HeroSlideModel[]>
       id: products.id,
       slug: products.slug,
       name: products.name,
-      imageKey: products.imageKey,
+      coverKey: sql<
+        string | null
+      >`(select pi.key from ${productImages} pi where pi.product_id = ${products.id} order by pi.position limit 1)`,
     })
     .from(products)
     .innerJoin(stores, eq(products.storeId, stores.id))
-    .where(and(eq(products.featured, true), isNotNull(products.imageKey)))
+    .where(
+      and(
+        eq(products.featured, true),
+        sql`exists (select 1 from ${productImages} pi where pi.product_id = ${products.id})`,
+      ),
+    )
     .orderBy(desc(products.createdAt))
     .limit(limit);
 
-  return rows.flatMap((row) => (row.imageKey ? [{ ...row, imageKey: row.imageKey }] : []));
+  return rows.flatMap((row) => (row.coverKey ? [{ ...row, coverKey: row.coverKey }] : []));
 }
 
 export async function listStoreFacets() {
@@ -159,7 +168,16 @@ export async function getProductBySlug(slug: string) {
     .where(eq(products.slug, slug))
     .limit(1);
 
-  return rows[0] ?? null;
+  const product = rows[0];
+  if (!product) return null;
+
+  const gallery = await getDb()
+    .select({ key: productImages.key })
+    .from(productImages)
+    .where(eq(productImages.productId, product.id))
+    .orderBy(productImages.position);
+
+  return { ...product, images: gallery.map((image) => image.key) };
 }
 
 export async function getStoreBySlug(slug: string) {

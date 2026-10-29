@@ -57,12 +57,28 @@ export const products = pgTable(
     priceCents: integer("price_cents").notNull(),
     stock: integer("stock").notNull().default(0),
     featured: boolean("featured").notNull().default(false),
-    imageKey: text("image_key"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("products_slug_idx").on(table.slug),
     index("products_store_idx").on(table.storeId),
+  ],
+);
+
+export const productImages = pgTable(
+  "product_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("product_images_position_idx").on(table.productId, table.position),
+    index("product_images_product_idx").on(table.productId),
   ],
 );
 
@@ -125,5 +141,6 @@ export type OrderItem = typeof orderItems.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Store = typeof stores.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type ProductImage = typeof productImages.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Role = "admin" | "store" | "user";

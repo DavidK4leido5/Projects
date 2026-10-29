@@ -1,7 +1,6 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { isNotNull } from "drizzle-orm";
 import { getDb } from "../src/lib/db/index.js";
-import { products } from "../src/lib/db/schema.js";
+import { productImages } from "../src/lib/db/schema.js";
 import { cloudinaryConfigured, uploadToCloudinary } from "../src/lib/cloudinary.js";
 import { getStorageConfig } from "../src/lib/env.js";
 
@@ -27,10 +26,7 @@ async function main() {
     credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
   });
 
-  const rows = await getDb()
-    .select({ key: products.imageKey })
-    .from(products)
-    .where(isNotNull(products.imageKey));
+  const rows = await getDb().select({ key: productImages.key }).from(productImages);
 
   let mirrored = 0;
   for (const row of rows) {

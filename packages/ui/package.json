@@ -5,13 +5,22 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/shared": "workspace:*"
+    "@radix-ui/react-alert-dialog": "catalog:",
+    "@radix-ui/react-checkbox": "catalog:",
+    "@radix-ui/react-dialog": "catalog:",
+    "@radix-ui/react-label": "catalog:",
+    "@radix-ui/react-separator": "catalog:",
+    "@radix-ui/react-slot": "catalog:",
+    "@repo/shared": "workspace:*",
+    "class-variance-authority": "catalog:",
+    "lucide-react": "catalog:"
   },
   "peerDependencies": {
     "react": "^19.0.0",

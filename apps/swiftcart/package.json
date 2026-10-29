@@ -25,7 +25,8 @@
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "server-only": "catalog:"
+    "server-only": "catalog:",
+    "lucide-react": "catalog:"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "catalog:",

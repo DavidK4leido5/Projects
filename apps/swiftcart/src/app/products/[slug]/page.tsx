@@ -2,23 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatMoney } from "@repo/shared";
-import { getProductBySlug, listProductSlugs } from "@/features/catalog/queries";
 import { AddToCartButton } from "@/components/add-to-cart-button";
-import { imageSources } from "@/lib/cloudinary";
+import { ProductGallery } from "@/components/product-gallery";
+import { getProductBySlug, listProductSlugs } from "@/features/catalog/queries";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+export async function generateStaticParams() {
+  const slugs = await listProductSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   return { title: product ? product.name : "Product not found" };
-}
-
-export async function generateStaticParams() {
-  const slugs = await listProductSlugs();
-  return slugs.map((slug) => ({ slug }));
 }
 
 export default async function ProductPage({ params }: PageProps) {
@@ -27,45 +27,31 @@ export default async function ProductPage({ params }: PageProps) {
   if (!product) notFound();
 
   const inStock = product.stock > 0;
-  const art = product.imageKey ? imageSources(product.imageKey, 960) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <div className="grid gap-8 md:grid-cols-2">
-        {product.imageKey ? (
-          <img
-            src={art ? art.src : "/api/images/" + product.imageKey}
-            srcSet={art?.srcSet}
-            sizes="(min-width: 768px) 50vw, 100vw"
-            alt={product.name}
-            className="aspect-[4/3] w-full rounded-lg border border-neutral-200 object-cover"
-          />
-        ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center rounded-lg bg-neutral-100 text-2xl text-neutral-400">
-            {product.name.charAt(0)}
-          </div>
-        )}
+        <ProductGallery images={product.images} name={product.name} />
+
         <div className="flex flex-col items-start gap-3">
           <Link
-            href={`/stores/${product.storeSlug}`}
-            className="text-xs text-neutral-500 transition-colors hover:text-neutral-900"
+            href={"/stores/" + product.storeSlug}
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             {product.storeName}
           </Link>
           <h1 className="text-3xl font-semibold tracking-tight">{product.name}</h1>
-          <p className="text-lg text-neutral-900">{formatMoney(product.priceCents)}</p>
-          <p className="text-xs text-neutral-500">
-            {inStock
-              ? product.stock + (product.stock === 1 ? " in stock" : " in stock")
-              : "Out of stock"}
+          <p className="text-lg text-foreground">{formatMoney(product.priceCents)}</p>
+          <p className="text-xs text-muted-foreground">
+            {inStock ? product.stock + " in stock" : "Out of stock"}
           </p>
-          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">
+          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
             {product.description}
           </p>
           {inStock ? (
             <AddToCartButton productId={product.id} className="mt-4" />
           ) : (
-            <span className="mt-4 inline-flex items-center rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-500">
+            <span className="mt-4 inline-flex items-center rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
               Out of stock
             </span>
           )}

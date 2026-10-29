@@ -3,7 +3,7 @@ import { getDb } from "../src/lib/db/index.js";
 import { cloudinaryConfigured, uploadToCloudinary } from "../src/lib/cloudinary.js";
 import { getStorageConfig } from "../src/lib/env.js";
 import { posterTile } from "./png.js";
-import { cartItems, products, profiles, stores } from "../src/lib/db/schema.js";
+import { cartItems, productImages, products, profiles, stores } from "../src/lib/db/schema.js";
 
 const ORIGIN = process.env.NEON_AUTH_TRUSTED_ORIGIN ?? "http://localhost:3000";
 const PASSWORD = "demo1234";
@@ -175,17 +175,27 @@ async function main() {
     if (!store) throw new Error("Could not insert store " + seed.slug);
 
     for (const item of seed.products) {
-      const imageKey = await uploadTile(item.name);
-      await db.insert(products).values({
-        storeId: store.id,
-        slug: toSlug(item.name) + "-" + Math.random().toString(36).slice(2, 6),
-        name: item.name,
-        description: item.description,
-        priceCents: Math.round(item.price * 100),
-        stock: item.stock,
-        featured: item.featured ?? false,
-        imageKey,
-      });
+      const insertedProduct = await db
+        .insert(products)
+        .values({
+          storeId: store.id,
+          slug: toSlug(item.name) + "-" + Math.random().toString(36).slice(2, 6),
+          name: item.name,
+          description: item.description,
+          priceCents: Math.round(item.price * 100),
+          stock: item.stock,
+          featured: item.featured ?? false,
+        })
+        .returning({ id: products.id });
+
+      const product = insertedProduct[0];
+      if (!product) throw new Error("Could not insert " + item.name);
+
+      // Two previews so the gallery has something to page through.
+      const keys = [await uploadTile(item.name), await uploadTile(item.name + " detail")];
+      await db
+        .insert(productImages)
+        .values(keys.map((key, position) => ({ productId: product.id, key, position })));
     }
   }
 
