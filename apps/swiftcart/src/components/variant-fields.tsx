@@ -218,7 +218,7 @@ export function VariantFields({
                       );
                     }}
                     placeholder="Group name"
-                    className="h-8 w-32 rounded-md border border-border px-2 text-sm font-medium"
+                    className="h-10 min-w-0 flex-1 rounded-md border border-border px-2 text-sm font-medium sm:h-8 sm:w-32 sm:flex-none"
                   />
                   {groups.length > 1 ? (
                     <button
@@ -250,20 +250,33 @@ export function VariantFields({
                       </button>
                     </span>
                   ))}
-                  <input
-                    value={draftValue[group.id] ?? ""}
-                    onChange={(event) =>
-                      setDraftValue((current) => ({ ...current, [group.id]: event.target.value }))
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        addValue(group.id);
+                  <span className="flex w-full items-center gap-1.5 sm:w-auto">
+                    <input
+                      value={draftValue[group.id] ?? ""}
+                      onChange={(event) =>
+                        setDraftValue((current) => ({ ...current, [group.id]: event.target.value }))
                       }
-                    }}
-                    placeholder="Add value, press Enter"
-                    className="h-7 w-44 rounded-md border border-border px-2 text-xs"
-                  />
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addValue(group.id);
+                        }
+                      }}
+                      placeholder="Add value"
+                      enterKeyHint="done"
+                      className="h-10 min-w-0 flex-1 rounded-md border border-border px-2 text-sm sm:h-8 sm:w-44 sm:flex-none sm:text-xs"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => addValue(group.id)}
+                      className="h-10 shrink-0 px-3 sm:h-8"
+                    >
+                      <Plus />
+                      Add
+                    </Button>
+                  </span>
                 </div>
               </div>
             ))}
@@ -280,9 +293,16 @@ export function VariantFields({
                     }
                   }}
                   placeholder="New group, e.g. Color"
-                  className="h-8 w-44 rounded-md border border-border px-2 text-xs"
+                  enterKeyHint="done"
+                  className="h-10 min-w-0 flex-1 rounded-md border border-border px-2 text-sm sm:h-8 sm:w-44 sm:flex-none sm:text-xs"
                 />
-                <Button type="button" size="sm" variant="outline" onClick={addGroup}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addGroup}
+                  className="h-10 shrink-0 px-3 sm:h-8"
+                >
                   <Plus />
                   Add group
                 </Button>
@@ -318,7 +338,7 @@ export function VariantFields({
                     ))}
                     <th className="px-2 py-2 font-medium">Price</th>
                     <th className="px-2 py-2 font-medium">Stock</th>
-                    <th className="px-2 py-2 font-medium">SKU</th>
+                    <th className="hidden px-2 py-2 font-medium sm:table-cell">SKU</th>
                     <th className="px-2 py-2 font-medium">Preview</th>
                     <th className="w-8 px-2 py-2" />
                   </tr>
@@ -347,7 +367,7 @@ export function VariantFields({
                                 picks: { ...row.picks, [group.name]: event.target.value },
                               })
                             }
-                            className="h-7 w-28 rounded-md border border-border bg-background px-1 text-xs"
+                            className="h-10 w-28 rounded-md border border-border bg-background px-1 text-sm sm:h-7 sm:text-xs"
                           >
                             <option value="">none</option>
                             {group.values.map((value) => (
@@ -365,7 +385,7 @@ export function VariantFields({
                           value={row.price}
                           onChange={(event) => patchRow(row.id, { price: event.target.value })}
                           placeholder="base"
-                          className="h-7 w-20 rounded-md border border-border px-2 text-xs"
+                          className="h-10 w-20 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -373,15 +393,15 @@ export function VariantFields({
                           aria-label="Variant stock"
                           value={row.stock}
                           onChange={(event) => patchRow(row.id, { stock: event.target.value })}
-                          className="h-7 w-16 rounded-md border border-border px-2 text-xs"
+                          className="h-10 w-16 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="hidden px-2 py-2 sm:table-cell">
                         <input
                           aria-label="Variant SKU"
                           value={row.sku}
                           onChange={(event) => patchRow(row.id, { sku: event.target.value })}
-                          className="h-7 w-24 rounded-md border border-border px-2 text-xs"
+                          className="h-10 w-24 rounded-md border border-border px-2 text-sm sm:h-7 sm:text-xs"
                         />
                       </td>
                       <td className="px-2 py-2">

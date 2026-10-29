@@ -71,7 +71,7 @@ export function ProductForm({ action, product, onCancel }: ProductFormProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label>Options</Label>
+        <Label>Variations</Label>
         <VariantFields
           initialProperties={product?.properties ?? []}
           initialVariants={product?.variants ?? []}
