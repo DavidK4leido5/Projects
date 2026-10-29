@@ -40,8 +40,13 @@ export async function POST(request: Request) {
       cloudinaryConfigured: cloudinaryConfigured(),
     });
   } catch (error) {
+    // Both stores or neither: the bucket copy is already gone at this point.
     return Response.json(
-      { error: error instanceof Error ? error.message : "Could not store the image." },
+      {
+        error:
+          "The image was not saved anywhere. Cloudinary rejected it, so the bucket copy was removed.",
+        detail: error instanceof Error ? error.message : String(error),
+      },
       { status: 502 },
     );
   }
