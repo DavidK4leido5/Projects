@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 export function ProductGallery({ images, name }: { images: string[]; name: string }) {
@@ -16,9 +17,13 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
 
   return (
     <div className="flex flex-col gap-3">
-      <img
-        src={"/api/images/" + current}
+      <Image
+        src={current}
         alt={name}
+        width={1200}
+        height={900}
+        sizes="(min-width: 768px) 50vw, 100vw"
+        priority
         className="aspect-[4/3] w-full rounded-lg border border-border object-cover"
       />
 
@@ -32,13 +37,13 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
                 aria-label={"Show preview " + (index + 1)}
                 aria-current={index === active}
                 className={
-                  "block h-16 w-16 overflow-hidden rounded-md border transition-colors " +
+                  "block overflow-hidden rounded-md border transition-colors " +
                   (index === active
                     ? "border-foreground"
                     : "border-border hover:border-muted-foreground")
                 }
               >
-                <img src={"/api/images/" + key} alt="" className="h-full w-full object-cover" />
+                <Image src={key} alt="" width={64} height={64} className="h-16 w-16 object-cover" />
               </button>
             </li>
           ))}

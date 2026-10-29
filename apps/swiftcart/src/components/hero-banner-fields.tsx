@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@repo/ui";
@@ -35,7 +36,7 @@ async function readSize(file: File): Promise<{ width: number; height: number }> 
 
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
-    const image = new Image();
+    const image = document.createElement("img");
     image.onload = () => {
       resolve({ width: image.naturalWidth, height: image.naturalHeight });
       URL.revokeObjectURL(url);
@@ -157,9 +158,11 @@ function BannerSlot({
         }
       >
         {value ? (
-          <img
-            src={"/api/images/" + value}
+          <Image
+            src={value}
             alt={config.label}
+            width={config.slot === "wide" ? 640 : 360}
+            height={config.slot === "wide" ? 360 : 640}
             className="h-full w-full object-cover"
           />
         ) : (

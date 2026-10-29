@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Suspense } from "react";
 import Link from "next/link";
 import { formatMoney } from "@repo/shared";
@@ -5,7 +6,6 @@ import { Button, Card, CardTitle } from "@repo/ui";
 import { getCart } from "@/features/cart/queries";
 import { removeFromCart, setQuantity } from "@/features/cart/actions";
 import { placeOrder } from "@/features/orders/actions";
-import { imageSources } from "@/lib/cloudinary";
 import { requireUser } from "@/lib/auth/guards";
 import { PageSkeleton } from "@/components/skeletons";
 
@@ -56,12 +56,11 @@ async function CartPageBody({ searchParams }: { searchParams: Promise<{ error?: 
                 <Card className="flex flex-wrap items-center gap-4">
                   <Link href={`/products/${item.productSlug}`} className="shrink-0">
                     {item.coverKey ? (
-                      <img
-                        src={(() => {
-                          const art = imageSources(item.coverKey, 160);
-                          return art ? art.src : "/api/images/" + item.coverKey;
-                        })()}
+                      <Image
+                        src={item.coverKey}
                         alt={item.productName}
+                        width={64}
+                        height={64}
                         className="h-16 w-16 rounded-md border border-neutral-200 object-cover"
                       />
                     ) : (

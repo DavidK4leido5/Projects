@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@repo/ui";
@@ -105,9 +106,11 @@ export function ProductImagesField({ initial = [], onChange }: ImageFieldProps) 
               key={key}
               className="group relative overflow-hidden rounded-md border border-border"
             >
-              <img
-                src={"/api/images/" + key}
+              <Image
+                src={key}
                 alt={"Preview " + (index + 1)}
+                width={200}
+                height={200}
                 className="aspect-square w-full object-cover"
               />
               {index === 0 ? (

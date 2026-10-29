@@ -7,6 +7,11 @@ const config: NextConfig = {
   cacheComponents: true,
   // Links only prefetch the prerendered shell, never per-user data.
   partialPrefetching: true,
+  images: {
+    // Cloudinary does the resizing and format negotiation.
+    loader: "custom" as const,
+    loaderFile: "./src/lib/image-loader.ts",
+  },
 };
 
 export default config;

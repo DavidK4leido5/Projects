@@ -1,22 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
 import { formatMoney } from "@repo/shared";
-import { imageSources } from "@/lib/cloudinary";
 import type { ProductCardModel } from "@/features/catalog/queries";
 
 export function ProductCard({ product }: { product: ProductCardModel }) {
   const soldOut = product.stock === 0;
-  const art = product.coverKey ? imageSources(product.coverKey, 640) : null;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-neutral-300">
       <Link href={"/products/" + product.slug} className="relative block bg-neutral-100">
         {product.coverKey ? (
-          <img
-            src={art ? art.src : "/api/images/" + product.coverKey}
-            srcSet={art?.srcSet}
-            sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+          <Image
+            src={product.coverKey}
             alt={product.name}
-            loading="lazy"
+            width={640}
+            height={640}
+            sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="aspect-square w-full object-cover"
           />
         ) : (

@@ -43,6 +43,18 @@ whose `<img>` is the tall one, so phones get the vertical crop and desktops the 
 ratio is checked in the browser before upload; the action refuses a featured item missing either
 banner.
 
+## Images
+
+Every image goes through `next/image` with a project-wide custom loader
+(`src/lib/image-loader.ts`, wired in `next.config.ts`). The loader rewrites a storage key into a
+Cloudinary URL with `f_auto,q_auto,c_fill,w_<width>`, so the CDN negotiates format and size per
+device and the Next optimizer never touches the bytes. Without `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+the loader returns the app's own `/api/images/<key>` route instead, which keeps local work possible.
+
+The hero is art-directed with `getImageProps` rather than two `<Image>` elements, because a
+`<picture>` needs different `srcset`s per media query without shipping both files. The frame is
+`aspect-[9/16]` on phones and `aspect-video` from `sm` up, matching the two banner files exactly.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial

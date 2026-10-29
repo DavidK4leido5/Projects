@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -99,9 +100,11 @@ export function ProductManager({ items }: { items: StoreItem[] }) {
                 <TableRow key={item.id}>
                   <TableCell>
                     {item.images[0] ? (
-                      <img
-                        src={"/api/images/" + item.images[0]}
+                      <Image
+                        src={item.images[0]}
                         alt=""
+                        width={40}
+                        height={40}
                         className="h-10 w-10 rounded-md border border-border object-cover"
                       />
                     ) : (

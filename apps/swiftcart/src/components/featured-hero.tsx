@@ -7,7 +7,6 @@ export type HeroSlide = {
   id: string;
   slug: string;
   name: string;
-  wideSrc: string;
   wideSrcSet?: string;
   tallSrc: string;
   tallSrcSet?: string;
@@ -54,7 +53,8 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="relative h-[min(78vh,640px)] w-full sm:h-[clamp(300px,40vw,560px)]">
+      {/* 9:16 on phones, exactly 16:9 from sm up, matching the two banner files. */}
+      <div className="relative aspect-[9/16] w-full sm:aspect-video">
         {slides.map((slide, slideIndex) => {
           const active = slideIndex === index;
           return (
@@ -76,7 +76,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
                   sizes="100vw"
                   alt={slide.name}
                   fetchPriority={active ? "high" : "low"}
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               </picture>
             </Link>
