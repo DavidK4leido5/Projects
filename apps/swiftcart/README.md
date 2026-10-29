@@ -104,6 +104,21 @@ Products without options still get exactly one variant with empty options, which
 on one path. `products.stock` is a rolled-up sum for cards and filters; the variant rows are
 authoritative.
 
+## Optimistic writes
+
+Every store-facing mutation lands in the UI before the server answers. The rule, applied from the
+dashboard outward:
+
+1. The client derives the row it expects and applies it through `useOptimistic`.
+2. The sheet or dialog closes immediately.
+3. The server action runs inside the same transition and returns `{ ok }` instead of redirecting.
+4. `router.refresh()` reconciles with the database.
+5. If the action fails, the transition ends, the optimistic state drops, and the server's message
+   appears above the table. The row comes back exactly as it was.
+
+This is why product actions return results rather than redirecting: a redirect would finish the
+navigation before the optimistic row could settle. Any new mutation should follow the same shape.
+
 ## Rendering and caching
 
 `cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial

@@ -1,25 +1,30 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button, Checkbox, Input, Label, Textarea } from "@repo/ui";
-import { emptyFormState, type FormState } from "@/lib/form";
 import { HeroBannerFields } from "@/components/hero-banner-fields";
 import { ProductImagesField } from "@/components/product-images-field";
 import { VariantFields } from "@/components/variant-fields";
 import type { StoreItem } from "@/features/products/queries";
 
 type ProductFormProps = {
-  action: (prevState: FormState, formData: FormData) => Promise<FormState>;
   product?: StoreItem;
+  pending: boolean;
+  error: string | null;
+  onSubmit: (data: FormData) => void;
   onCancel: () => void;
 };
 
-export function ProductForm({ action, product, onCancel }: ProductFormProps) {
-  const [state, formAction, pending] = useActionState(action, emptyFormState);
+export function ProductForm({ product, pending, error, onSubmit, onCancel }: ProductFormProps) {
   const [featured, setFeatured] = useState(Boolean(product?.featured));
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSubmit(new FormData(event.currentTarget));
+  }
+
   return (
-    <form action={formAction} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+    <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
       {featured ? <input type="hidden" name="featured" value="on" /> : null}
 
@@ -109,12 +114,12 @@ export function ProductForm({ action, product, onCancel }: ProductFormProps) {
         ) : null}
       </div>
 
-      {state.error ? (
+      {error ? (
         <p
           role="alert"
           className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
         >
-          {state.error}
+          {error}
         </p>
       ) : null}
 

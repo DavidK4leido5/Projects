@@ -2,12 +2,11 @@
 
 import { and, eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireStoreOwner } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db";
 import { productImages, productVariants, products } from "@/lib/db/schema";
 import type { ProductProperty, VariantOptions } from "@/lib/db/schema";
-import type { FormState } from "@/lib/form";
+export type ActionResult = { ok: true } | { ok: false; error: string };
 import { slugify } from "@/lib/slug";
 import { tags } from "@/lib/cache";
 import { removeImage } from "@/lib/media";
@@ -296,10 +295,10 @@ async function writeImages(productId: string, images: string[]): Promise<void> {
     .values(images.map((key, position) => ({ productId, key, position })));
 }
 
-export async function createProduct(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function createProduct(formData: FormData): Promise<ActionResult> {
   const actor = await requireStoreOwner();
   const input = parseProductForm(formData);
-  if ("error" in input) return input;
+  if ("error" in input) return { ok: false, error: input.error };
 
   const slug = (slugify(input.name) || "product") + "-" + Math.random().toString(36).slice(2, 6);
 
@@ -320,7 +319,7 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
     .returning({ id: products.id });
 
   const product = inserted[0];
-  if (!product) return { error: "Could not create the product." };
+  if (!product) return { ok: false, error: "Could not create the product." };
 
   await writeImages(product.id, input.images);
   await syncVariants(product.id, input.variants);
@@ -328,16 +327,16 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
   updateTag(tags.products);
   updateTag(tags.featured);
   updateTag(tags.store(actor.store.slug));
-  redirect("/dashboard");
+  return { ok: true };
 }
 
-export async function updateProduct(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function updateProduct(formData: FormData): Promise<ActionResult> {
   const actor = await requireStoreOwner();
   const id = text(formData, "id");
-  if (!id) return { error: "Missing product id." };
+  if (!id) return { ok: false, error: "Missing product id." };
 
   const input = parseProductForm(formData);
-  if ("error" in input) return input;
+  if ("error" in input) return { ok: false, error: input.error };
 
   const owned = await getDb()
     .select({
@@ -349,7 +348,7 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)))
     .limit(1);
   const existing = owned[0];
-  if (!existing) return { error: "Product not found." };
+  if (!existing) return { ok: false, error: "Product not found." };
 
   const previous = await getDb()
     .select({ key: productImages.key })
@@ -391,13 +390,12 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
   updateTag(tags.products);
   updateTag(tags.featured);
   updateTag(tags.store(actor.store.slug));
-  redirect("/dashboard");
+  return { ok: true };
 }
 
-export async function deleteProduct(formData: FormData): Promise<void> {
+export async function deleteProduct(id: string): Promise<ActionResult> {
   const actor = await requireStoreOwner();
-  const id = text(formData, "id");
-  if (!id) return;
+  if (!id) return { ok: false, error: "Missing product id." };
 
   const owned = await getDb()
     .select({
@@ -409,7 +407,7 @@ export async function deleteProduct(formData: FormData): Promise<void> {
     .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)))
     .limit(1);
   const product = owned[0];
-  if (!product) return;
+  if (!product) return { ok: false, error: "Product not found." };
 
   const [images, variants] = await Promise.all([
     getDb()
@@ -435,4 +433,5 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   updateTag(tags.products);
   updateTag(tags.featured);
   updateTag(tags.store(actor.store.slug));
+  return { ok: true };
 }
