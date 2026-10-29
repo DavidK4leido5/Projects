@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
+import { getDatabaseUrl } from "@/lib/env";
 import * as schema from "./schema";
 
 type Database = NeonHttpDatabase<typeof schema>;
@@ -13,9 +14,11 @@ let client: Database | undefined;
 export function getDb(): Database {
   if (client) return client;
 
-  const url = process.env.DATABASE_URL;
+  const url = getDatabaseUrl();
   if (!url) {
-    throw new Error("DATABASE_URL is not set. Run `neon deploy` and sync .env.local.");
+    throw new Error(
+      "No database URL. Set DATABASE_URL (or PGHOST, PGUSER, PGPASSWORD, PGDATABASE).",
+    );
   }
 
   client = drizzle({ client: neon(url), schema });

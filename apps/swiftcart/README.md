@@ -57,14 +57,19 @@ not: every route is dynamic and the db client is created lazily, so a build neve
 
 ## Configuration
 
-`neon deploy` provisions Postgres and object storage and writes the env vars. The app reads:
+Those are the names `neon env pull` writes, because Neon emits the S3 SDK's standard variables:
 
-| Variable                                                                                                                                        | Used by           |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `DATABASE_URL`                                                                                                                                  | `src/lib/db`      |
-| `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_ACCESS_KEY_ID`, `OBJECT_STORAGE_SECRET_ACCESS_KEY`, `OBJECT_STORAGE_REGION` | `src/lib/storage` |
+| Variable                                                                          | Used by           |
+| --------------------------------------------------------------------------------- | ----------------- |
+| `DATABASE_URL`                                                                    | `src/lib/db`      |
+| `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | `src/lib/storage` |
+| `OBJECT_STORAGE_BUCKET` (optional, defaults to `assets`)                          | `src/lib/storage` |
 
-`AWS_*` equivalents are accepted as a fallback. See `.env.example`.
+Object storage has no bucket variable in Neon: the bucket is the one declared in `neon.ts`, so it
+needs `OBJECT_STORAGE_BUCKET` only when the provisioned bucket has a different name. The older
+`OBJECT_STORAGE_*` names still resolve, and the project also accepts split `PG*` database vars.
+
+`pnpm --filter @repo/swiftcart env:report` prints what the app resolves, with secrets masked.
 
 ## Out of scope on purpose
 

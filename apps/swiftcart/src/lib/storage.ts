@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getStorageConfig, type StorageConfig } from "@/lib/env";
 
 export type StoredObject = {
   body: Uint8Array;
@@ -22,69 +23,50 @@ export type ObjectStorage = {
   remove(key: string): Promise<void>;
 };
 
-function firstDefined(...names: string[]): string | undefined {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) return value;
-  }
-  return undefined;
-}
-
-const endpoint = firstDefined(
-  "OBJECT_STORAGE_ENDPOINT",
-  "AWS_ENDPOINT_URL",
-  "S3_ENDPOINT",
-  "NEON_STORAGE_ENDPOINT",
-);
-const region = firstDefined("OBJECT_STORAGE_REGION", "AWS_REGION", "AWS_DEFAULT_REGION") ?? "auto";
-const bucket = firstDefined(
-  "OBJECT_STORAGE_BUCKET",
-  "AWS_BUCKET_NAME",
-  "S3_BUCKET",
-  "NEON_STORAGE_BUCKET",
-);
-const accessKeyId = firstDefined("OBJECT_STORAGE_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID");
-const secretAccessKey = firstDefined("OBJECT_STORAGE_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY");
-
 export function storageConfigured(): boolean {
-  return Boolean(endpoint && bucket && accessKeyId && secretAccessKey);
+  return getStorageConfig() !== null;
 }
 
 let client: S3Client | undefined;
-let resolvedBucket: string | undefined;
+let config: StorageConfig | undefined;
 
-function s3(): S3Client {
-  if (client) return client;
-  if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
-    throw new Error(
-      "Object storage is not configured. Expected OBJECT_STORAGE_* (or AWS_*) env vars.",
-    );
+function s3(): { client: S3Client; bucket: string } {
+  if (!config) {
+    const resolved = getStorageConfig();
+    if (!resolved) {
+      throw new Error(
+        "Object storage is not configured. Set OBJECT_STORAGE_ENDPOINT, OBJECT_STORAGE_BUCKET, " +
+          "OBJECT_STORAGE_ACCESS_KEY_ID, OBJECT_STORAGE_SECRET_ACCESS_KEY, or their AWS_* equivalents.",
+      );
+    }
+    config = resolved;
   }
-  resolvedBucket = bucket;
-  client = new S3Client({
-    region,
-    endpoint,
+
+  client ??= new S3Client({
+    region: config.region,
+    endpoint: config.endpoint,
     forcePathStyle: true,
-    credentials: { accessKeyId, secretAccessKey },
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
   });
-  return client;
+
+  return { client, bucket: config.bucket };
 }
 
 export const storage: ObjectStorage = {
   async put(key, body, contentType) {
-    await s3().send(
-      new PutObjectCommand({
-        Bucket: resolvedBucket,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-      }),
+    const { client: s3Client, bucket } = s3();
+    await s3Client.send(
+      new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }),
     );
   },
 
   async get(key) {
+    const { client: s3Client, bucket } = s3();
     try {
-      const result = await s3().send(new GetObjectCommand({ Bucket: resolvedBucket, Key: key }));
+      const result = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
       const bytes = await result.Body?.transformToByteArray();
       if (!bytes) return null;
       return { body: bytes, contentType: result.ContentType ?? "application/octet-stream" };
@@ -95,6 +77,7 @@ export const storage: ObjectStorage = {
   },
 
   async remove(key) {
-    await s3().send(new DeleteObjectCommand({ Bucket: resolvedBucket, Key: key }));
+    const { client: s3Client, bucket } = s3();
+    await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   },
 };

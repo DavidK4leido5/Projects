@@ -1,7 +1,7 @@
 import { inArray } from "drizzle-orm";
 import { getDb } from "../src/lib/db";
 import { products, stores } from "../src/lib/db/schema";
-import { hashPassword } from "../src/lib/auth";
+import { hashPassword } from "../src/lib/password";
 
 const SEED_STORES = [
   {
@@ -117,5 +117,9 @@ async function main() {
   console.log(`seeded ${SEED_STORES.length} stores`);
 }
 
-await main();
-process.exit(0);
+main()
+  .then(() => process.exit(0))
+  .catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
