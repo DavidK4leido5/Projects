@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { formatMoney } from "@repo/shared";
 import { getProductBySlug } from "@/features/catalog/queries";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { imageSources } from "@/lib/cloudinary";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -21,13 +22,16 @@ export default async function ProductPage({ params }: PageProps) {
   if (!product) notFound();
 
   const inStock = product.stock > 0;
+  const art = product.imageKey ? imageSources(product.imageKey, 960) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <div className="grid gap-8 md:grid-cols-2">
         {product.imageKey ? (
           <img
-            src={`/api/images/${product.imageKey}`}
+            src={art ? art.src : "/api/images/" + product.imageKey}
+            srcSet={art?.srcSet}
+            sizes="(min-width: 768px) 50vw, 100vw"
             alt={product.name}
             className="aspect-[4/3] w-full rounded-lg border border-neutral-200 object-cover"
           />

@@ -1,5 +1,6 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getDb } from "../src/lib/db/index.js";
+import { cloudinaryConfigured, uploadToCloudinary } from "../src/lib/cloudinary.js";
 import { getStorageConfig } from "../src/lib/env.js";
 import { posterTile } from "./png.js";
 import { cartItems, products, profiles, stores } from "../src/lib/db/schema.js";
@@ -98,14 +99,14 @@ function storageClient() {
 async function uploadTile(name: string): Promise<string> {
   const { client, bucket } = storageClient();
   const key = "products/seed/" + toSlug(name) + ".png";
+  const body = posterTile(1600, 800, hueOf(name));
   await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: posterTile(1600, 800, hueOf(name)),
-      ContentType: "image/png",
-    }),
+    new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: "image/png" }),
   );
+
+  // Every stored image is mirrored for delivery, same as the upload route.
+  if (cloudinaryConfigured()) await uploadToCloudinary(key, body, "image/png");
+
   return key;
 }
 

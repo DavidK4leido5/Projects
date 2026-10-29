@@ -27,6 +27,24 @@ is one query.
 The rail below the grid only renders when nothing is filtered, because showing unrelated products
 under a search result is worse than showing none.
 
+## Media and delivery
+
+Every image is written twice: Neon object storage is the system of record, Cloudinary is the delivery
+layer. `saveImage()` in `src/lib/media.ts` is the only path that stores a file, and it enforces both
+or neither: if Cloudinary rejects the asset, the object is deleted from the bucket again rather than
+leaving the two out of sync.
+
+Uploads land in the `swiftcart` folder in Cloudinary. The public id is derived from the object key
+(`products/<id>/<uuid>.png` becomes `swiftcart/products/<id>/<uuid>`), so no extra column is needed and
+existing rows start using the CDN as soon as credentials exist.
+
+Delivery URLs carry `f_auto,q_auto,c_fill,w_<n>` plus a `srcset` of 320 to 1600 wide, so the browser
+picks a size and Cloudinary picks the format. When Cloudinary is not configured, every surface falls
+back to streaming through `/api/images/[...key]` and `/api/health` reports it as unconfigured.
+
+Images uploaded before Cloudinary existed are only in the bucket. `pnpm --filter @repo/swiftcart media:mirror`
+copies them across once.
+
 ## The hero
 
 A store marks any of its products `featured`. The landing page collects those that also have artwork,

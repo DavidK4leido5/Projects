@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getAuthUser } from "@/lib/auth/session";
-import { storage } from "@/lib/storage";
+import { saveImage } from "@/lib/media";
+import { cloudinaryConfigured } from "@/lib/cloudinary";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const EXTENSIONS: Record<string, string> = {
@@ -28,7 +29,20 @@ export async function POST(request: Request) {
   }
 
   const key = `products/${user.id}/${randomUUID()}.${extension}`;
-  await storage.put(key, new Uint8Array(await file.arrayBuffer()), file.type);
 
-  return Response.json({ key, url: `/api/images/${key}` });
+  try {
+    const saved = await saveImage(key, new Uint8Array(await file.arrayBuffer()), file.type);
+    return Response.json({
+      key: saved.key,
+      url: `/api/images/${saved.key}`,
+      cdn: saved.publicId ? { publicId: saved.publicId } : null,
+      deliveredBy: saved.publicId ? "cloudinary" : "object-storage",
+      cloudinaryConfigured: cloudinaryConfigured(),
+    });
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Could not store the image." },
+      { status: 502 },
+    );
+  }
 }

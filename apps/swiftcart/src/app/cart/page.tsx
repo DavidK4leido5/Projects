@@ -4,6 +4,7 @@ import { Button, Card, CardTitle } from "@repo/ui";
 import { getCart } from "@/features/cart/queries";
 import { removeFromCart, setQuantity } from "@/features/cart/actions";
 import { placeOrder } from "@/features/orders/actions";
+import { imageSources } from "@/lib/cloudinary";
 import { requireUser } from "@/lib/auth/guards";
 
 export const metadata = { title: "Cart" };
@@ -58,7 +59,10 @@ export default async function CartPage({
                   <Link href={`/products/${item.productSlug}`} className="shrink-0">
                     {item.imageKey ? (
                       <img
-                        src={`/api/images/${item.imageKey}`}
+                        src={(() => {
+                          const art = imageSources(item.imageKey, 160);
+                          return art ? art.src : "/api/images/" + item.imageKey;
+                        })()}
                         alt={item.productName}
                         className="h-16 w-16 rounded-md border border-neutral-200 object-cover"
                       />

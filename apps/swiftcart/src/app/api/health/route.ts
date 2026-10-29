@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { CLOUDINARY_FOLDER, cloudinaryConfigured } from "@/lib/cloudinary";
 import { storage, storageConfigured } from "@/lib/storage";
 
 type Check = { status: "ok" | "fail"; detail?: string };
@@ -33,10 +34,16 @@ async function checkStorage(): Promise<Check> {
 
 export async function GET() {
   const [database, storageCheck] = await Promise.all([checkDatabase(), checkStorage()]);
+  const cdn = {
+    status: cloudinaryConfigured() ? ("ok" as const) : ("unconfigured" as const),
+    detail: cloudinaryConfigured()
+      ? "folder " + CLOUDINARY_FOLDER
+      : "CLOUDINARY_* env vars are missing",
+  };
   const ok = database.status === "ok" && storageCheck.status === "ok";
 
   return Response.json(
-    { ok, checks: { database, storage: storageCheck } },
+    { ok, checks: { database, storage: storageCheck, cloudinary: cdn } },
     { status: ok ? 200 : 503 },
   );
 }

@@ -3,6 +3,7 @@ import { Button, Card, CardTitle } from "@repo/ui";
 import { FeaturedHero } from "@/components/featured-hero";
 import { ProductCard } from "@/components/product-card";
 import { listFeaturedProducts, listStoreFacets, searchProducts } from "@/features/catalog/queries";
+import { imageSources } from "@/lib/cloudinary";
 
 export const metadata = { title: "All products" };
 
@@ -47,6 +48,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
     listFeaturedProducts(),
   ]);
 
+  const heroSlides = featured.map((item) => {
+    const art = imageSources(item.imageKey, 1600);
+    return {
+      id: item.id,
+      slug: item.slug,
+      name: item.name,
+      src: art ? art.src : "/api/images/" + item.imageKey,
+      srcSet: art?.srcSet,
+    };
+  });
+
   // The rail only earns its space if it shows something the grid does not.
   const onPage = new Set(catalog.items.map((item) => item.id));
   const rail = bestValue.items.filter((item) => !onPage.has(item.id)).slice(0, 4);
@@ -55,7 +67,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Sea
 
   return (
     <>
-      {!filtered && featured.length > 0 ? <FeaturedHero slides={featured} /> : null}
+      {!filtered && heroSlides.length > 0 ? <FeaturedHero slides={heroSlides} /> : null}
 
       <main id="catalogue" className="mx-auto max-w-6xl scroll-mt-24 px-4 pb-10 pt-6">
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-neutral-500">

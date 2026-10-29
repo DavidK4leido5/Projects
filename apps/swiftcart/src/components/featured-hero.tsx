@@ -7,7 +7,8 @@ export type HeroSlide = {
   id: string;
   slug: string;
   name: string;
-  imageKey: string;
+  src: string;
+  srcSet?: string;
 };
 
 const INTERVAL_MS = 5500;
@@ -66,8 +67,11 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
               }
             >
               <img
-                src={"/api/images/" + slide.imageKey}
+                src={slide.src}
+                srcSet={slide.srcSet}
+                sizes="100vw"
                 alt={slide.name}
+                fetchPriority={active ? "high" : "low"}
                 className="h-full w-full object-cover"
               />
             </Link>
