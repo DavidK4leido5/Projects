@@ -2,12 +2,16 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Minus, Plus, X } from "lucide-react";
+import { Minus, Plus, RotateCcw, X } from "lucide-react";
+
+type View = { zoom: number; x: number; y: number };
+
+const FULL: View = { zoom: 1, x: 0, y: 0 };
+const clampZoom = (value: number) => Math.min(Math.max(value, 1), 4);
 
 /**
- * Product photo plus a full-screen viewer. The viewer never scrolls: the image
- * is contained in the viewport, the wheel changes magnification, dragging pans
- * when zoomed, and the strip underneath switches images.
+ * Product photo plus a full-screen viewer. Zoom is anchored to the cursor, and
+ * going back to 1x always returns to the fitted view.
  */
 export function ZoomableImage({
   images,
@@ -30,19 +34,40 @@ export function ZoomableImage({
 }) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(initialIndex);
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [view, setView] = useState<View>(FULL);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   const current = images[index] ?? images[0];
-  const clamp = (value: number) => Math.min(Math.max(value, 1), 4);
 
   const close = useCallback(() => {
     setOpen(false);
-    setZoom(1);
-    setOffset({ x: 0, y: 0 });
+    setView(FULL);
   }, []);
+
+  /** Multiply the current zoom around a point measured from the stage centre. */
+  const zoomBy = useCallback((factor: number, cx: number, cy: number) => {
+    setView((value) => {
+      const zoom = clampZoom(value.zoom * factor);
+      if (zoom === value.zoom) return value;
+      if (zoom === 1) return FULL;
+      const ratio = zoom / value.zoom;
+      return {
+        zoom,
+        x: cx - (cx - value.x) * ratio,
+        y: cy - (cy - value.y) * ratio,
+      };
+    });
+  }, []);
+
+  /** Buttons and keys step by half a level, anchored at the stage centre. */
+  const stepZoom = useCallback(
+    (delta: number) => {
+      const next = clampZoom(view.zoom + delta);
+      zoomBy(next / view.zoom, 0, 0);
+    },
+    [view.zoom, zoomBy],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -51,27 +76,33 @@ export function ZoomableImage({
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") close();
-      if (event.key === "+") setZoom((value) => clamp(value + 0.5));
-      if (event.key === "-") setZoom((value) => clamp(value - 0.5));
+      if (event.key === "0") setView(FULL);
+      if (event.key === "+") stepZoom(0.5);
+      if (event.key === "-") stepZoom(-0.5);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previous;
     };
-  }, [open, close]);
+  }, [open, close, stepZoom]);
 
-  // Wheel zooms instead of scrolling, so the stage never moves.
+  // The wheel zooms toward the pointer, so the stage itself never scrolls.
   useEffect(() => {
     const stage = stageRef.current;
     if (!open || !stage) return;
+    const el = stage;
+
     function onWheel(event: WheelEvent) {
       event.preventDefault();
-      setZoom((value) => clamp(value + (event.deltaY < 0 ? 0.25 : -0.25)));
+      const rect = el.getBoundingClientRect();
+      const cx = event.clientX - rect.left - rect.width / 2;
+      const cy = event.clientY - rect.top - rect.height / 2;
+      zoomBy(event.deltaY < 0 ? 1.25 : 0.8, cx, cy);
     }
-    stage.addEventListener("wheel", onWheel, { passive: false });
-    return () => stage.removeEventListener("wheel", onWheel);
-  }, [open]);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [open, zoomBy]);
 
   if (!current) return null;
 
@@ -81,6 +112,7 @@ export function ZoomableImage({
         type="button"
         onClick={() => {
           setIndex(initialIndex);
+          setView(FULL);
           setOpen(true);
         }}
         aria-label={"Open " + alt + " larger"}
@@ -113,21 +145,30 @@ export function ZoomableImage({
               <button
                 type="button"
                 aria-label="Zoom out"
-                onClick={() => setZoom((value) => clamp(value - 0.5))}
+                onClick={() => stepZoom(-0.5)}
                 className="rounded-full border border-white/20 p-2 hover:bg-white/10"
               >
                 <Minus className="h-4 w-4" />
               </button>
               <span className="w-10 text-center text-xs tabular-nums text-white/70">
-                {zoom.toFixed(1)}x
+                {view.zoom.toFixed(2)}x
               </span>
               <button
                 type="button"
                 aria-label="Zoom in"
-                onClick={() => setZoom((value) => clamp(value + 0.5))}
+                onClick={() => stepZoom(0.5)}
                 className="rounded-full border border-white/20 p-2 hover:bg-white/10"
               >
                 <Plus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Reset view"
+                onClick={() => setView(FULL)}
+                disabled={view.zoom === 1 && view.x === 0 && view.y === 0}
+                className="rounded-full border border-white/20 p-2 hover:bg-white/10 disabled:opacity-40"
+              >
+                <RotateCcw className="h-4 w-4" />
               </button>
               <button
                 type="button"
@@ -142,19 +183,25 @@ export function ZoomableImage({
 
           <div
             ref={stageRef}
+            data-zoom={view.zoom}
             className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2"
             onPointerDown={(event) => {
-              if (zoom === 1) return;
-              drag.current = { x: event.clientX - offset.x, y: event.clientY - offset.y };
+              if (view.zoom === 1) return;
+              drag.current = { x: event.clientX - view.x, y: event.clientY - view.y };
               event.currentTarget.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
               if (!drag.current) return;
-              setOffset({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
+              setView((value) => ({
+                ...value,
+                x: event.clientX - drag.current!.x,
+                y: event.clientY - drag.current!.y,
+              }));
             }}
             onPointerUp={() => {
               drag.current = null;
             }}
+            onDoubleClick={() => setView(FULL)}
           >
             <Image
               src={current}
@@ -164,7 +211,8 @@ export function ZoomableImage({
               sizes="100vw"
               draggable={false}
               style={{
-                transform: "translate(" + offset.x + "px, " + offset.y + "px) scale(" + zoom + ")",
+                transform: "translate(" + view.x + "px, " + view.y + "px) scale(" + view.zoom + ")",
+                transformOrigin: "center center",
               }}
               className="max-h-full max-w-full select-none object-contain transition-transform duration-150"
             />
@@ -180,8 +228,7 @@ export function ZoomableImage({
                   aria-current={position === index}
                   onClick={() => {
                     setIndex(position);
-                    setZoom(1);
-                    setOffset({ x: 0, y: 0 });
+                    setView(FULL);
                   }}
                   className={
                     "h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition-colors " +
