@@ -32,6 +32,9 @@ async function AdminProductsPageBody() {
                   Product
                 </th>
                 <th scope="col" className="px-5 py-3 font-medium">
+                  Category
+                </th>
+                <th scope="col" className="px-5 py-3 font-medium">
                   Store
                 </th>
                 <th scope="col" className="px-5 py-3 font-medium">

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { productImages, productVariants, products, stores } from "@/lib/db/schema";
@@ -28,6 +28,7 @@ type VariantInput = {
 
 type ProductInput = {
   name?: string;
+  category?: string;
   description?: string;
   priceCents?: number;
   stock?: number;
@@ -163,6 +164,7 @@ export async function POST(request: Request) {
         storeId,
         slug,
         name,
+        category: (input.category ?? "").trim() || null,
         description: (input.description ?? "").trim(),
         priceCents,
         stock,
@@ -202,4 +204,67 @@ export async function POST(request: Request) {
   revalidateTag(tags.featured, "max");
 
   return Response.json({ ok: true, created: created.length, names: created, failed });
+}
+
+/** Lists products with their category, for cleanup passes. */
+export async function GET() {
+  const actor = await getActor();
+  if (actor.kind !== "admin" && actor.kind !== "store") {
+    return Response.json({ error: "Sign in as a store or admin." }, { status: 401 });
+  }
+
+  const rows = await getDb()
+    .select({
+      id: products.id,
+      name: products.name,
+      category: products.category,
+      store: stores.name,
+      slug: products.slug,
+    })
+    .from(products)
+    .innerJoin(stores, eq(products.storeId, stores.id))
+    .where(actor.kind === "store" ? eq(products.storeId, actor.store.id) : undefined)
+    .orderBy(products.name);
+
+  return Response.json({ ok: true, count: rows.length, products: rows });
+}
+
+/** Sets categories on existing products, matched by name. */
+export async function PATCH(request: Request) {
+  const actor = await getActor();
+  if (actor.kind !== "admin" && actor.kind !== "store") {
+    return Response.json({ error: "Sign in as a store or admin." }, { status: 401 });
+  }
+
+  let body: { updates?: { name?: string; category?: string }[] };
+  try {
+    body = (await request.json()) as { updates?: { name?: string; category?: string }[] };
+  } catch {
+    return Response.json({ error: "Expected JSON." }, { status: 400 });
+  }
+
+  const updates = body.updates ?? [];
+  if (updates.length === 0) return Response.json({ error: "No updates." }, { status: 400 });
+  if (updates.length > 200) return Response.json({ error: "Too many updates." }, { status: 400 });
+
+  const db = getDb();
+  const storeFilter = actor.kind === "store" ? eq(products.storeId, actor.store.id) : undefined;
+  let updated = 0;
+  const missing: string[] = [];
+
+  for (const update of updates) {
+    const name = (update.name ?? "").trim();
+    const category = (update.category ?? "").trim();
+    if (!name || !category) continue;
+    const rows = await db
+      .update(products)
+      .set({ category })
+      .where(storeFilter ? and(storeFilter, eq(products.name, name)) : eq(products.name, name))
+      .returning({ id: products.id });
+    updated += rows.length;
+    if (rows.length === 0) missing.push(name);
+  }
+
+  revalidateTag(tags.products, "max");
+  return Response.json({ ok: true, updated, missing });
 }

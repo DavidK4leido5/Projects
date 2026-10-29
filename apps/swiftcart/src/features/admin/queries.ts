@@ -56,6 +56,7 @@ export async function listAllProducts() {
       id: products.id,
       name: products.name,
       slug: products.slug,
+      category: products.category,
       priceCents: products.priceCents,
       storeId: products.storeId,
       storeName: stores.name,
