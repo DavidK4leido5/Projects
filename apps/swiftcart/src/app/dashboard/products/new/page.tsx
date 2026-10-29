@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { ProductForm } from "@/components/product-form";
 import { createProduct } from "@/features/products/actions";
 import { requireStoreOwner } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function NewProductPage() {
+async function NewProductPageBody() {
   await requireStoreOwner();
 
   return (
@@ -10,5 +12,13 @@ export default async function NewProductPage() {
       <h1 className="text-2xl font-semibold tracking-tight">New product</h1>
       <ProductForm action={createProduct} />
     </main>
+  );
+}
+
+export default function NewProductPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <NewProductPageBody />
+    </Suspense>
   );
 }

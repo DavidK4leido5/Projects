@@ -1,13 +1,15 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatDate, formatMoney } from "@repo/shared";
 import { Button, Card } from "@repo/ui";
 import { setOrderStatus } from "@/features/orders/actions";
 import { listAllOrders } from "@/features/orders/queries";
 import { requireAdmin } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
 const STATUSES = ["placed", "fulfilled", "cancelled"] as const;
 
-export default async function AdminOrdersPage() {
+async function AdminOrdersPageBody() {
   await requireAdmin();
   const orders = await listAllOrders();
 
@@ -90,5 +92,13 @@ export default async function AdminOrdersPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function AdminOrdersPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AdminOrdersPageBody />
+    </Suspense>
   );
 }

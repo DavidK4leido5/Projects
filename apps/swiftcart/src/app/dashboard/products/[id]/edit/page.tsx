@@ -1,11 +1,13 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Button } from "@repo/ui";
 import { ProductForm } from "@/components/product-form";
 import { listStoreProducts } from "@/features/catalog/queries";
 import { deleteProduct, updateProduct } from "@/features/products/actions";
 import { requireStoreOwner } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+async function EditProductPageBody({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const actor = await requireStoreOwner();
   const items = await listStoreProducts(actor.store.id);
@@ -26,5 +28,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         </div>
       </form>
     </main>
+  );
+}
+
+export default function EditProductPage(props: Parameters<typeof EditProductPageBody>[0]) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <EditProductPageBody {...props} />
+    </Suspense>
   );
 }

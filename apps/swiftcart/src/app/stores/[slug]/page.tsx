@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardTitle } from "@repo/ui";
-import { getStoreBySlug } from "@/features/catalog/queries";
+import { getStoreBySlug, listStoreSlugs } from "@/features/catalog/queries";
 import { ProductCard } from "@/components/product-card";
 
 type PageProps = {
@@ -12,6 +12,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const data = await getStoreBySlug(slug);
   return { title: data ? data.store.name : "Store not found" };
+}
+
+export async function generateStaticParams() {
+  const slugs = await listStoreSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export default async function StorePage({ params }: PageProps) {

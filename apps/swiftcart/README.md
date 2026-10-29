@@ -16,6 +16,37 @@ One account, one role.
 | `store` | CRUD the products of the one store it owns        | `/dashboard` |
 | `user`  | Browse, and keep a cart tied to the account       | `/`          |
 
+## Rendering and caching
+
+`cacheComponents` is on, so the app uses `use cache`, `cacheLife`, `cacheTag`, and partial
+prerendering together. No route carries `export const dynamic`.
+
+**Shell versus holes.** Every route prerenders its frame (header chrome, footer, page shell). Anything
+cookie-bound sits in a Suspense boundary: the session controls in the header, the catalogue keyed by
+`searchParams`, and the body of every authed page. The build reports those routes as partial prerender,
+never dynamic.
+
+**Tags are the contract** (`src/lib/cache.ts`). Public reads declare them; every write calls
+`updateTag` for the ones it changes, which gives read-your-own-writes inside server actions.
+
+```
+products, product:<slug>, stores, store:<slug>, featured, orders, order:<id>
+```
+
+**Never cached:** per-user reads (cart, orders, dashboard, admin). They are scoped to the request, so a
+shared cache entry would leak one shopper's data to another.
+
+**Prebuild.** `generateStaticParams` covers known product and store slugs; new ones render on first
+request and are cached from then on.
+
+**Skeletons** live in `src/components/skeletons.tsx`. Route-level `loading.tsx` files cover the
+detail routes, and the Suspense fallbacks cover the streamed holes.
+
+**Operational note.** `db:seed`, `db:reset`, and `db:migrate` write straight to Postgres and bypass
+the server actions, so they do not invalidate tags. After running one, restart the server (which clears
+the in-process cache) or wait for the cache lifetime to lapse. `next build` now needs `DATABASE_URL`
+because it prerenders real rows.
+
 ## The catalogue
 
 The landing page is a browse surface, not a poster: a two row header with search, a breadcrumb, a

@@ -1,10 +1,12 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Button, Card, CardTitle } from "@repo/ui";
 import { CreateStoreForm, RenameStoreForm } from "@/components/admin-store-form";
 import { deleteStore } from "@/features/admin/actions";
 import { listStoresWithCounts } from "@/features/admin/queries";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function AdminStoresPage() {
+async function AdminStoresPageBody() {
   const stores = await listStoresWithCounts();
 
   return (
@@ -77,5 +79,13 @@ export default async function AdminStoresPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function AdminStoresPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AdminStoresPageBody />
+    </Suspense>
   );
 }

@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
 const NAV = [
   { href: "/admin", label: "Overview" },
@@ -10,7 +12,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders" },
 ];
 
-export default async function AdminLayout({ children }: { children: ReactNode }) {
+async function AdminLayoutBody({ children }: { children: ReactNode }) {
   const actor = await requireAdmin();
 
   return (
@@ -34,5 +36,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       </div>
       <div className="pt-8">{children}</div>
     </main>
+  );
+}
+
+export default function AdminLayout(props: Parameters<typeof AdminLayoutBody>[0]) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AdminLayoutBody {...props} />
+    </Suspense>
   );
 }

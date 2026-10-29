@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Card, CardTitle } from "@repo/ui";
 import { adminOverview } from "@/features/admin/queries";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function AdminPage() {
+async function AdminPageBody() {
   const overview = await adminOverview();
   const stats = [
     { label: "Users", value: overview.users },
@@ -31,5 +33,13 @@ export default async function AdminPage() {
         </p>
       </Card>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AdminPageBody />
+    </Suspense>
   );
 }

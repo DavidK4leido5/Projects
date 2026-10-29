@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatDate } from "@repo/shared";
 import { Card } from "@repo/ui";
 import { DeleteUserForm, RoleForm } from "@/components/admin-user-form";
 import { listProfiles } from "@/features/admin/queries";
 import { requireAdmin } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
 const ROLE_STYLES: Record<string, string> = {
   admin: "bg-neutral-900 text-white",
@@ -11,7 +13,7 @@ const ROLE_STYLES: Record<string, string> = {
   user: "bg-neutral-100 text-neutral-600",
 };
 
-export default async function AdminUsersPage() {
+async function AdminUsersPageBody() {
   const actor = await requireAdmin();
   const profiles = await listProfiles();
 
@@ -114,5 +116,13 @@ export default async function AdminUsersPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AdminUsersPageBody />
+    </Suspense>
   );
 }

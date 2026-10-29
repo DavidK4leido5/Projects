@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatMoney } from "@repo/shared";
 import { Button, Card, CardTitle } from "@repo/ui";
@@ -6,14 +7,11 @@ import { removeFromCart, setQuantity } from "@/features/cart/actions";
 import { placeOrder } from "@/features/orders/actions";
 import { imageSources } from "@/lib/cloudinary";
 import { requireUser } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
 export const metadata = { title: "Cart" };
 
-export default async function CartPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+async function CartPageBody({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const actor = await requireUser();
   const cart = await getCart(actor.profile.id);
@@ -147,5 +145,13 @@ export default async function CartPage({
         </div>
       )}
     </main>
+  );
+}
+
+export default function CartPage(props: Parameters<typeof CartPageBody>[0]) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <CartPageBody {...props} />
+    </Suspense>
   );
 }

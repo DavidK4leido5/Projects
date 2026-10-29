@@ -1,10 +1,12 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatMoney } from "@repo/shared";
 import { Button, Card } from "@repo/ui";
 import { deleteAnyProduct } from "@/features/admin/actions";
 import { listAllProducts } from "@/features/admin/queries";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function AdminProductsPage() {
+async function AdminProductsPageBody() {
   const products = await listAllProducts();
 
   return (
@@ -77,5 +79,13 @@ export default async function AdminProductsPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function AdminProductsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AdminProductsPageBody />
+    </Suspense>
   );
 }

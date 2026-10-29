@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatMoney } from "@repo/shared";
-import { getProductBySlug } from "@/features/catalog/queries";
+import { getProductBySlug, listProductSlugs } from "@/features/catalog/queries";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { imageSources } from "@/lib/cloudinary";
 
@@ -14,6 +14,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   return { title: product ? product.name : "Product not found" };
+}
+
+export async function generateStaticParams() {
+  const slugs = await listProductSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export default async function ProductPage({ params }: PageProps) {

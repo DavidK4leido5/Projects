@@ -1,11 +1,13 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatDate, formatMoney } from "@repo/shared";
 import { Button, Card, CardTitle } from "@repo/ui";
 import { listStoreProducts } from "@/features/catalog/queries";
 import { deleteProduct } from "@/features/products/actions";
 import { requireStoreOwner } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function DashboardPage() {
+async function DashboardPageBody() {
   const actor = await requireStoreOwner();
   const items = await listStoreProducts(actor.store.id);
   const catalogueValue = items.reduce((total, item) => total + item.priceCents, 0);
@@ -89,5 +91,13 @@ export default async function DashboardPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DashboardPageBody />
+    </Suspense>
   );
 }

@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { formatDate, formatMoney } from "@repo/shared";
 import { Button, Card, CardTitle } from "@repo/ui";
 import { listUserOrders } from "@/features/orders/queries";
 import { requireUser } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
 export const metadata = { title: "Orders" };
 
@@ -16,7 +18,7 @@ function statusClass(status: string) {
   return STATUS_STYLES[status as keyof typeof STATUS_STYLES] ?? STATUS_STYLES.placed;
 }
 
-export default async function OrdersPage() {
+async function OrdersPageBody() {
   const actor = await requireUser();
   const orders = await listUserOrders(actor.profile.id);
 
@@ -94,5 +96,13 @@ export default async function OrdersPage() {
         </Card>
       )}
     </main>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <OrdersPageBody />
+    </Suspense>
   );
 }

@@ -1,13 +1,14 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStoreOwner } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db";
 import { products } from "@/lib/db/schema";
 import type { FormState } from "@/lib/form";
 import { slugify } from "@/lib/slug";
+import { tags } from "@/lib/cache";
 
 function text(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -61,8 +62,9 @@ export async function createProduct(_prev: FormState, formData: FormData): Promi
     .insert(products)
     .values({ ...input, slug, storeId: actor.store.id });
 
-  revalidatePath("/");
-  revalidatePath("/dashboard");
+  updateTag(tags.products);
+  updateTag(tags.featured);
+  updateTag(tags.store(actor.store.slug));
   redirect("/dashboard");
 }
 
@@ -79,8 +81,9 @@ export async function updateProduct(_prev: FormState, formData: FormData): Promi
     .set(input)
     .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)));
 
-  revalidatePath("/");
-  revalidatePath("/dashboard");
+  updateTag(tags.products);
+  updateTag(tags.featured);
+  updateTag(tags.store(actor.store.slug));
   redirect("/dashboard");
 }
 
@@ -93,6 +96,7 @@ export async function deleteProduct(formData: FormData): Promise<void> {
     .delete(products)
     .where(and(eq(products.id, id), eq(products.storeId, actor.store.id)));
 
-  revalidatePath("/");
-  revalidatePath("/dashboard");
+  updateTag(tags.products);
+  updateTag(tags.featured);
+  updateTag(tags.store(actor.store.slug));
 }

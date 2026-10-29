@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { formatDate, formatMoney } from "@repo/shared";
 import { Card, CardTitle } from "@repo/ui";
 import { getOrder } from "@/features/orders/queries";
 import { getActor } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
 const STATUS_STYLES = {
   placed: "bg-neutral-100 text-neutral-700",
@@ -15,7 +17,7 @@ function statusClass(status: string) {
   return STATUS_STYLES[status as keyof typeof STATUS_STYLES] ?? STATUS_STYLES.placed;
 }
 
-export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
+async function OrderPageBody({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const actor = await getActor();
   if (actor.kind === "anonymous") redirect("/login");
@@ -111,5 +113,13 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </p>
       </div>
     </main>
+  );
+}
+
+export default function OrderPage(props: Parameters<typeof OrderPageBody>[0]) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <OrderPageBody {...props} />
+    </Suspense>
   );
 }

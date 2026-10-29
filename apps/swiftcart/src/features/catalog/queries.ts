@@ -1,8 +1,10 @@
 import "server-only";
 
 import { and, asc, desc, eq, gt, ilike, isNotNull, or, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { products, stores } from "@/lib/db/schema";
+import { lifetimes, tags } from "@/lib/cache";
 
 const productColumns = {
   id: products.id,
@@ -11,6 +13,7 @@ const productColumns = {
   description: products.description,
   priceCents: products.priceCents,
   stock: products.stock,
+  featured: products.featured,
   imageKey: products.imageKey,
   createdAt: products.createdAt,
   storeName: stores.name,
@@ -29,7 +32,12 @@ export type CatalogFilters = {
   perPage?: number;
 };
 
+/** Shared by every visitor, so it is cached and tagged rather than reloaded. */
 export async function listProducts(limit = 24) {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+
   return getDb()
     .select(productColumns)
     .from(products)
@@ -39,6 +47,11 @@ export async function listProducts(limit = 24) {
 }
 
 export async function searchProducts(filters: CatalogFilters) {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+  cacheTag(tags.stores);
+
   const perPage = Math.min(Math.max(filters.perPage ?? 12, 1), 48);
   const page = Math.max(filters.page ?? 1, 1);
 
@@ -95,6 +108,11 @@ export type HeroSlideModel = {
 
 /** Featured products that have artwork, newest first. These drive the hero. */
 export async function listFeaturedProducts(limit = 8): Promise<HeroSlideModel[]> {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.featured);
+  cacheTag(tags.products);
+
   const rows = await getDb()
     .select({
       id: products.id,
@@ -108,11 +126,14 @@ export async function listFeaturedProducts(limit = 8): Promise<HeroSlideModel[]>
     .orderBy(desc(products.createdAt))
     .limit(limit);
 
-  // The where clause guarantees a key; the cast keeps that promise in the type.
   return rows.flatMap((row) => (row.imageKey ? [{ ...row, imageKey: row.imageKey }] : []));
 }
 
 export async function listStoreFacets() {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.stores);
+
   return getDb()
     .select({
       slug: stores.slug,
@@ -126,6 +147,11 @@ export async function listStoreFacets() {
 }
 
 export async function getProductBySlug(slug: string) {
+  "use cache";
+  cacheLife(lifetimes.detail);
+  cacheTag(tags.product(slug));
+  cacheTag(tags.products);
+
   const rows = await getDb()
     .select(productColumns)
     .from(products)
@@ -137,6 +163,11 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getStoreBySlug(slug: string) {
+  "use cache";
+  cacheLife(lifetimes.detail);
+  cacheTag(tags.store(slug));
+  cacheTag(tags.products);
+
   const rows = await getDb().select().from(stores).where(eq(stores.slug, slug)).limit(1);
   const store = rows[0];
   if (!store) return null;
@@ -151,10 +182,33 @@ export async function getStoreBySlug(slug: string) {
   return { store, products: items };
 }
 
+/**
+ * Deliberately not cached: it is read by the seller's own dashboard, which is
+ * per-user and would poison a shared cache entry.
+ */
 export async function listStoreProducts(storeId: string) {
   return getDb()
     .select()
     .from(products)
     .where(eq(products.storeId, storeId))
     .orderBy(desc(products.createdAt));
+}
+
+/** Prebuild paths for the on-demand routes. */
+export async function listProductSlugs() {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.products);
+
+  const rows = await getDb().select({ slug: products.slug }).from(products);
+  return rows.map((row) => row.slug);
+}
+
+export async function listStoreSlugs() {
+  "use cache";
+  cacheLife(lifetimes.catalogue);
+  cacheTag(tags.stores);
+
+  const rows = await getDb().select({ slug: stores.slug }).from(stores);
+  return rows.map((row) => row.slug);
 }

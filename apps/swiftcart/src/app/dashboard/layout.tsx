@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { requireStoreOwner } from "@/lib/auth/guards";
+import { PageSkeleton } from "@/components/skeletons";
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
+async function DashboardLayoutBody({ children }: { children: ReactNode }) {
   const actor = await requireStoreOwner();
 
   return (
@@ -28,5 +30,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       </div>
       <div className="pt-8">{children}</div>
     </main>
+  );
+}
+
+export default function DashboardLayout(props: Parameters<typeof DashboardLayoutBody>[0]) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DashboardLayoutBody {...props} />
+    </Suspense>
   );
 }

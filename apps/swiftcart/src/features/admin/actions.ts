@@ -1,11 +1,12 @@
 "use server";
 
 import { and, eq, ne } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { getDb } from "@/lib/db";
 import { products, profiles, stores } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { slugify } from "@/lib/slug";
+import { tags } from "@/lib/cache";
 
 export type AdminFormState = { error?: string; warning?: string; ok?: boolean };
 
@@ -57,8 +58,8 @@ export async function createStoreForUser(
   await db.insert(stores).values({ ownerId: profile.id, slug, name: storeName });
   await db.update(profiles).set({ role: "store" }).where(eq(profiles.id, profile.id));
 
-  revalidatePath("/admin/stores");
-  revalidatePath("/");
+  updateTag(tags.stores);
+  updateTag(tags.products);
   return { ok: true };
 }
 
@@ -73,8 +74,8 @@ export async function renameStore(
   if (name.length < 2) return { error: "Store name must be at least 2 characters." };
 
   await getDb().update(stores).set({ name }).where(eq(stores.id, id));
-  revalidatePath("/admin/stores");
-  revalidatePath("/");
+  updateTag(tags.stores);
+  updateTag(tags.products);
   return { ok: true };
 }
 
@@ -94,8 +95,8 @@ export async function deleteStore(formData: FormData): Promise<void> {
     .set({ role: "user" })
     .where(and(eq(profiles.id, store.ownerId), ne(profiles.role, "admin")));
 
-  revalidatePath("/admin/stores");
-  revalidatePath("/");
+  updateTag(tags.stores);
+  updateTag(tags.products);
 }
 
 export async function setUserRole(
@@ -125,7 +126,8 @@ export async function setUserRole(
   }
 
   await db.update(profiles).set({ role }).where(eq(profiles.id, userId));
-  revalidatePath("/admin/users");
+  updateTag(tags.stores);
+  updateTag(tags.products);
   return { ok: true };
 }
 
@@ -171,7 +173,8 @@ export async function deleteUser(
     return { ok: true, warning: "Local account removed. The auth identity could not be reached." };
   }
 
-  revalidatePath("/admin/users");
+  updateTag(tags.stores);
+  updateTag(tags.products);
   return { ok: true };
 }
 
@@ -181,6 +184,5 @@ export async function deleteAnyProduct(formData: FormData): Promise<void> {
   if (!id) return;
 
   await getDb().delete(products).where(eq(products.id, id));
-  revalidatePath("/admin/products");
-  revalidatePath("/");
+  updateTag(tags.products);
 }

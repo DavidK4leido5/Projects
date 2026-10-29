@@ -1,12 +1,13 @@
 "use server";
 
 import { and, eq, gte, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/lib/db";
 import { cartItems, orderItems, orders, products } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth/guards";
 import { getCart } from "@/features/cart/queries";
+import { tags } from "@/lib/cache";
 
 /**
  * Turns the cart into an order.
@@ -66,8 +67,8 @@ export async function placeOrder(_formData: FormData): Promise<void> {
 
   await db.delete(cartItems).where(eq(cartItems.userId, actor.profile.id));
 
-  revalidatePath("/orders");
-  revalidatePath("/admin/orders");
+  updateTag(tags.orders);
+  updateTag(tags.products);
   redirect("/orders/" + order.id);
 }
 
@@ -80,6 +81,6 @@ export async function setOrderStatus(formData: FormData): Promise<void> {
   if (status !== "placed" && status !== "fulfilled" && status !== "cancelled") return;
 
   await getDb().update(orders).set({ status }).where(eq(orders.id, id));
-  revalidatePath("/admin/orders");
-  revalidatePath("/orders/" + id);
+  updateTag(tags.orders);
+  updateTag(tags.order(id));
 }
