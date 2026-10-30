@@ -14,6 +14,10 @@ build/
 .env.*
 !.env.example
 
+# tests
+playwright-report/
+test-results/
+
 # logs
 *.log
 pnpm-debug.log*

@@ -15,7 +15,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm lint && pnpm typecheck && pnpm format:check"
+    "check": "pnpm lint && pnpm typecheck && pnpm format:check",
+    "spendwise": "pnpm --filter @repo/spendwise dev"
   },
   "devDependencies": {
     "@repo/config": "workspace:*",

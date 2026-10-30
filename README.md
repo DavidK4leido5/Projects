@@ -10,25 +10,32 @@ Turborepo monorepo. pnpm workspaces, TypeScript everywhere, shared UI and config
 ```
 apps/
   swiftcart/    Next.js storefront on Neon Postgres + object storage
+  spendwise/    Next.js personal finance app on Neon Postgres, Auth, and object storage
 packages/
   config/       tsconfig bases and the ESLint flat config
   shared/       framework-agnostic helpers and types
-  ui/           shared React components
+  ui/           shared React components (shadcn primitives + derived components)
+  finance/      pure money/date/calculation module and Zod validators
+  db/           SpendWise Drizzle schema, clients, migrations, and seed
 ```
 
 ## Commands
 
-| Command          | Runs                                            |
-| ---------------- | ----------------------------------------------- |
-| `pnpm dev`       | every app in watch mode                         |
-| `pnpm build`     | `turbo run build`, cached per package           |
-| `pnpm typecheck` | `tsc --noEmit` in every package                 |
-| `pnpm test`      | `turbo run test` (no package defines tests yet) |
-| `pnpm lint`      | ESLint over the whole repo, one process         |
-| `pnpm format`    | Prettier write                                  |
-| `pnpm check`     | lint + typecheck + format check, the CI gate    |
+| Command          | Runs                                         |
+| ---------------- | -------------------------------------------- |
+| `pnpm dev`       | every app in watch mode                      |
+| `pnpm build`     | `turbo run build`, cached per package        |
+| `pnpm typecheck` | `tsc --noEmit` in every package              |
+| `pnpm test`      | `turbo run test` (finance + app unit tests)  |
+| `pnpm lint`      | ESLint over the whole repo, one process      |
+| `pnpm format`    | Prettier write                               |
+| `pnpm check`     | lint + typecheck + format check, the CI gate |
 
-Targeted runs: `pnpm --filter @repo/swiftcart dev`, `pnpm --filter @repo/ui typecheck`.
+Targeted runs: `pnpm --filter @repo/swiftcart dev`, `pnpm --filter @repo/spendwise dev`,
+`pnpm --filter @repo/ui typecheck`.
+
+SpendWise setup, Neon provisioning, migrations, seed, and Vercel deployment:
+[apps/spendwise/README.md](apps/spendwise/README.md).
 
 ## Adding things
 

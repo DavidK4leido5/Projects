@@ -1,0 +1,1 @@
+ALTER TABLE "spendwise"."recurring_rules" DROP COLUMN "auto_post";
