@@ -41,6 +41,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; x: number; y: number; axis: "none" | "x" | "y" } | null>(null);
   const suppressClick = useRef(false);
+  const offsetRef = useRef(0);
 
   const index = loop ? (((position - 1) % count) + count) % count : 0;
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -54,15 +55,30 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       ]
     : slides.map((slide) => ({ key: slide.id, slide }));
 
+  /**
+   * Track positions 1..count are the real slides, 0 and count+1 the clones. A
+   * step always starts from a real slide, so repeated input during the wrap
+   * animation can never walk off the track into empty space.
+   */
+  const realPosition = useCallback(
+    (current: number) => (current === 0 ? count : current === count + 1 ? 1 : current),
+    [count],
+  );
+
   /** Moves by one slide, wrapping through the clones. */
   const step = useCallback(
     (direction: 1 | -1) => {
       if (!loop) return;
-      setAnimate(!reducedMotion);
       setOffset(0);
-      setPosition((current) => current + direction);
+      setPosition((current) => {
+        const next = realPosition(current) + direction;
+        // Reduced motion never animates onto a clone, so wrap in place.
+        if (reducedMotion) return ((((next - 1) % count) + count) % count) + 1;
+        return next;
+      });
+      setAnimate(!reducedMotion);
     },
-    [loop, reducedMotion],
+    [count, loop, realPosition, reducedMotion],
   );
 
   const goTo = useCallback(
@@ -107,6 +123,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if ((event.target as HTMLElement).closest("button")) return;
     drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, axis: "none" };
+    offsetRef.current = 0;
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLElement>) {
@@ -126,18 +143,27 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       }
     }
     if (state.axis !== "x") return;
-    setOffset(dx);
+    // Keep the track inside its own strip: from the clone on the left to the
+    // clone on the right. Without this the drag can pull past the last clone
+    // and show the empty background.
+    const width = frameRef.current?.offsetWidth ?? 0;
+    const min = Math.max((position - count - 1) * width, -width);
+    const max = Math.min(position * width, width);
+    const clamped = Math.max(min, Math.min(max, dx));
+    offsetRef.current = clamped;
+    setOffset(clamped);
   }
 
-  function endDrag(event: React.PointerEvent<HTMLElement>) {
+  function endDrag() {
     const state = drag.current;
     drag.current = null;
     if (!state || state.axis !== "x") {
       setDragging(false);
       setOffset(0);
+      offsetRef.current = 0;
       return;
     }
-    const dx = event.clientX - state.x;
+    const dx = offsetRef.current;
     const width = frameRef.current?.offsetWidth ?? 0;
     const threshold = Math.min(Math.max(width * 0.12, 40), 120);
     setDragging(false);
@@ -150,7 +176,11 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
     if (Math.abs(dx) >= threshold) {
       setAnimate(!reducedMotion);
       setOffset(0);
-      setPosition((current) => current + (dx < 0 ? 1 : -1));
+      setPosition((current) => {
+        const next = realPosition(current) + (dx < 0 ? 1 : -1);
+        if (reducedMotion) return ((((next - 1) % count) + count) % count) + 1;
+        return next;
+      });
     } else {
       // Not far enough: spring back to the current slide.
       setAnimate(!reducedMotion);

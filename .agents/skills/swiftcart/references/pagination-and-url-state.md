@@ -2,13 +2,13 @@
 
 ## Contract
 
-| Surface | Params |
-|---|---|
-| catalogue `/` | `q, store, category, sort, stock, page` |
+| Surface                        | Params                                   |
+| ------------------------------ | ---------------------------------------- |
+| catalogue `/`                  | `q, store, category, sort, stock, page`  |
 | dashboard products / inventory | `q, category, sort, store, filter, page` |
-| admin products | `q, category, sort, store, page` |
-| admin users | `q, role, page` |
-| admin orders | `q, status, page` |
+| admin products                 | `q, category, sort, store, page`         |
+| admin users                    | `q, role, page`                          |
+| admin orders                   | `q, status, page`                        |
 
 - Search writes with `router.replace` (debounced 300 ms; 250 ms in `TableToolbar`). Typing must not add
   history entries.
@@ -30,7 +30,10 @@
   drops the highlight.
 
 ```tsx
-<ResultsRegion id="product-results" skeleton={<TableSkeleton rows={20} columns={6} variant="products" />}>
+<ResultsRegion
+  id="product-results"
+  skeleton={<TableSkeleton rows={20} columns={6} variant="products" />}
+>
   {table}
 </ResultsRegion>
 ```

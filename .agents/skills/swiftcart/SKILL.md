@@ -28,15 +28,15 @@ way: `component (client) -> server action -> DB + updateTag -> router.refresh()`
 
 ## Folder map
 
-| Path | What lives there |
-|---|---|
-| `src/app/(auth)` | login, signup, signup/store |
-| `src/app/admin` | overview, stores, users, products, orders + `queries.ts`, `user-queries.ts`, `order-queries.ts` |
-| `src/app/dashboard` | store items, inventory, orders |
-| `src/app/api` | `admin/products` (bulk import), `catalogue` (mobile paging), `upload`, `images/[...key]`, `health`, `auth/[...path]` |
-| `src/components` | shared UI. Tables: `product-manager`, `admin/*-table`, `inventory-table`. Shell: `pagination`, `results-region`, `table-skeleton`, `entity-drawer`, `row-menu`, `table-toolbar` |
-| `src/features/<d>` | `queries.ts` cached reads, `actions.ts` server actions |
-| `src/lib` | `db/`, `cache.ts` tags, `auth/`, `hooks.ts`, `cart.ts`, `media.ts`, `search-params.ts`, `use-optimistic-params.ts` |
+| Path                | What lives there                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/(auth)`    | login, signup, signup/store                                                                                                                                                     |
+| `src/app/admin`     | overview, stores, users, products, orders + `queries.ts`, `user-queries.ts`, `order-queries.ts`                                                                                 |
+| `src/app/dashboard` | store items, inventory, orders                                                                                                                                                  |
+| `src/app/api`       | `admin/products` (bulk import), `catalogue` (mobile paging), `upload`, `images/[...key]`, `health`, `auth/[...path]`                                                            |
+| `src/components`    | shared UI. Tables: `product-manager`, `admin/*-table`, `inventory-table`. Shell: `pagination`, `results-region`, `table-skeleton`, `entity-drawer`, `row-menu`, `table-toolbar` |
+| `src/features/<d>`  | `queries.ts` cached reads, `actions.ts` server actions                                                                                                                          |
+| `src/lib`           | `db/`, `cache.ts` tags, `auth/`, `hooks.ts`, `cart.ts`, `media.ts`, `search-params.ts`, `use-optimistic-params.ts`                                                              |
 
 ## Routes
 

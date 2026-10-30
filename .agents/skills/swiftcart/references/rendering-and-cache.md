@@ -24,8 +24,8 @@ export default function Page({ searchParams }: { searchParams: Promise<Search> }
 }
 
 async function Body({ searchParams }: { searchParams: Promise<Search> }) {
-  const params = await searchParams;      // request-time read, inside the hole
-  const rows = await listRows(params);    // cached query
+  const params = await searchParams; // request-time read, inside the hole
+  const rows = await listRows(params); // cached query
   return <ClientTable rows={rows} />;
 }
 ```
@@ -38,15 +38,15 @@ Rules:
 
 ## What is cached
 
-| Read | Cache | Tag |
-|---|---|---|
-| catalogue search, facets, categories | yes | `products`, `stores`, `featured` |
-| product detail, store page | yes | `product(slug)`, `store(slug)` |
-| admin products / users / orders / stores | yes | `products`, `users`, `orders`, `stores` |
-| dashboard items, inventory | yes | `products`, `inventory(storeId)` |
-| store's fulfilment list | yes | `orders`, `store(slug)` |
-| cart, shopper `/track`, receipts | **no** | per-user, never shared |
-| auth/session, cart count | **no** | request-time by nature |
+| Read                                     | Cache  | Tag                                     |
+| ---------------------------------------- | ------ | --------------------------------------- |
+| catalogue search, facets, categories     | yes    | `products`, `stores`, `featured`        |
+| product detail, store page               | yes    | `product(slug)`, `store(slug)`          |
+| admin products / users / orders / stores | yes    | `products`, `users`, `orders`, `stores` |
+| dashboard items, inventory               | yes    | `products`, `inventory(storeId)`        |
+| store's fulfilment list                  | yes    | `orders`, `store(slug)`                 |
+| cart, shopper `/track`, receipts         | **no** | per-user, never shared                  |
+| auth/session, cart count                 | **no** | request-time by nature                  |
 
 Per-user caching is the one way to leak data across accounts. If a read depends on the signed-in
 user id, either leave it uncached or key the cache on that id and tag it `user:<id>`.

@@ -21,8 +21,10 @@ Each of these has already cost time in this repo.
   `export const dynamic`.
 - The catalogue renders both layout strategies through one virtualised grid; the first server paint uses
   2 columns until `useMediaQuery` resolves. Do not try to guess the viewport on the server.
-- The hero is a **cloned track** slider: wrapping relies on the first and last clone slides. Reordering
-  slides without updating the clone logic breaks the loop.
+- The hero is a **cloned track** slider: wrapping relies on the first and last clone slides. Every step
+  starts from a real slide (`realPosition`), the drag offset is clamped to the strip, and a landing on a
+  clone snaps to the real slide without animating. Skip any of those three and continued input slides
+  into empty background.
 
 ## Data
 

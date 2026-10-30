@@ -4,20 +4,20 @@ Postgres on Neon, Drizzle, HTTP driver. **No transactions**; write flows compens
 
 ## Tables
 
-| Table | Key columns |
-|---|---|
-| `profiles` | id (Neon Auth id), name, email, role (`user`/`store`/`admin`), fullName, phone |
-| `stores` | id, slug, name, ownerId → profiles, tagline, bannerKey |
-| `products` | id, storeId, slug, name, category, description, priceCents, stock (rollup), featured, properties (jsonb), banner keys |
-| `product_images` | productId, key, position |
-| `product_variants` | productId, combinationKey, options (jsonb), priceCents?, stock, sku, imageKey |
-| `carts` | id, userId?, token (guest cookie) |
-| `cart_items` | cartId, productId, variantId, quantity; unique (cartId, variantId) |
-| `addresses` | one per profile, delivery snapshot fields |
-| `orders` | id, userId?, accessToken (receipt), publicRef, customer + delivery snapshot, totalCents, status |
-| `order_items` | orderId, storeId, productId, variantId, optionSummary, productName, storeName, priceCents, quantity |
-| `order_fulfilments` | orderId, storeId, status; unique (orderId, storeId) |
-| `order_events` | orderId, storeId?, actorId, fromStatus, toStatus, note (audit trail) |
+| Table               | Key columns                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `profiles`          | id (Neon Auth id), name, email, role (`user`/`store`/`admin`), fullName, phone                                        |
+| `stores`            | id, slug, name, ownerId → profiles, tagline, bannerKey                                                                |
+| `products`          | id, storeId, slug, name, category, description, priceCents, stock (rollup), featured, properties (jsonb), banner keys |
+| `product_images`    | productId, key, position                                                                                              |
+| `product_variants`  | productId, combinationKey, options (jsonb), priceCents?, stock, sku, imageKey                                         |
+| `carts`             | id, userId?, token (guest cookie)                                                                                     |
+| `cart_items`        | cartId, productId, variantId, quantity; unique (cartId, variantId)                                                    |
+| `addresses`         | one per profile, delivery snapshot fields                                                                             |
+| `orders`            | id, userId?, accessToken (receipt), publicRef, customer + delivery snapshot, totalCents, status                       |
+| `order_items`       | orderId, storeId, productId, variantId, optionSummary, productName, storeName, priceCents, quantity                   |
+| `order_fulfilments` | orderId, storeId, status; unique (orderId, storeId)                                                                   |
+| `order_events`      | orderId, storeId?, actorId, fromStatus, toStatus, note (audit trail)                                                  |
 
 ## Invariants
 
