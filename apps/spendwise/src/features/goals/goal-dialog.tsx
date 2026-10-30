@@ -1,11 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useId, useState, useTransition, type ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import {
   Button,
@@ -31,7 +29,6 @@ import {
   SelectValue,
   Textarea,
 } from "@repo/ui";
-import { createGoal, updateGoal } from "@/features/goals/actions";
 
 type AccountOption = { id: string; name: string };
 
@@ -44,6 +41,14 @@ type GoalDraft = {
   linkedAccountId: string | null;
   note: string | null;
   color: string;
+};
+
+export type GoalFormValues = {
+  name: string;
+  targetAmount: number;
+  targetDate: string | null;
+  linkedAccountId: string | null;
+  note: string | null;
 };
 
 const formSchema = z.object({
@@ -63,16 +68,16 @@ export function GoalDialog({
   accounts,
   goal,
   trigger,
+  onSave,
 }: {
   currency: string;
   accounts: AccountOption[];
   goal?: GoalDraft;
   trigger?: ReactNode;
+  onSave: (values: GoalFormValues) => void;
 }) {
-  const router = useRouter();
   const formId = useId();
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
 
   const form = useForm<Values>({
     resolver: zodResolver(formSchema),
@@ -85,37 +90,25 @@ export function GoalDialog({
     },
   });
 
-  function onSubmit(values: Values) {
-    startTransition(async () => {
-      const payload = {
-        name: values.name,
-        targetAmount: values.targetAmount,
-        currency: goal?.currency ?? currency,
-        targetDate: values.targetDate || null,
-        linkedAccountId: values.linkedAccountId || null,
-        note: values.note?.trim() || null,
-        color: goal?.color ?? "emerald",
-      };
-      const result = goal ? await updateGoal(goal.id, payload) : await createGoal(payload);
-
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(goal ? "Goal updated" : "Goal created");
-      if (!goal) {
-        form.reset({
-          name: "",
-          targetAmount: 0,
-          targetDate: "",
-          linkedAccountId: "",
-          note: "",
-        });
-      }
-      setOpen(false);
-      router.refresh();
+  function onSubmit(values: Values): void {
+    onSave({
+      name: values.name,
+      targetAmount: values.targetAmount,
+      targetDate: values.targetDate || null,
+      linkedAccountId: values.linkedAccountId || null,
+      note: values.note?.trim() || null,
     });
+
+    if (!goal) {
+      form.reset({
+        name: "",
+        targetAmount: 0,
+        targetDate: "",
+        linkedAccountId: "",
+        note: "",
+      });
+    }
+    setOpen(false);
   }
 
   return (
@@ -236,9 +229,8 @@ export function GoalDialog({
           </form>
         </Form>
         <DialogFooter>
-          <Button type="submit" form={formId} disabled={pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : goal ? "Save changes" : "Create goal"}
+          <Button type="submit" form={formId}>
+            {goal ? "Save changes" : "Create goal"}
           </Button>
         </DialogFooter>
       </DialogContent>

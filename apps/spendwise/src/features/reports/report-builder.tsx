@@ -93,6 +93,7 @@ export function ReportBuilder({
   const [paperSize, setPaperSize] = useState<"A4" | "Letter">("A4");
   const [pending, setPending] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState("spendwise-report.pdf");
@@ -216,7 +217,8 @@ export function ReportBuilder({
     setIncludeTransactions(request.includeTransactions);
     setIncludeCharts(request.includeCharts);
     setPaperSize(request.paperSize);
-    void generate(request);
+    setRegeneratingId(item.id);
+    void generate(request).finally(() => setRegeneratingId(null));
   }
 
   return (
@@ -523,7 +525,7 @@ export function ReportBuilder({
                 </TableHeader>
                 <TableBody>
                   {history.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={item.id} aria-busy={regeneratingId === item.id || undefined}>
                       <TableCell>
                         <p className="text-sm font-medium">{REPORT_TYPE_META[item.type].label}</p>
                         <p className="text-xs text-muted-foreground">
@@ -544,11 +546,26 @@ export function ReportBuilder({
                             variant="ghost"
                             disabled={pending || downloading === item.id}
                             onClick={() => regenerate(item)}
+                            aria-busy={regeneratingId === item.id || undefined}
                             aria-label={"Regenerate " + REPORT_TYPE_META[item.type].label}
                           >
-                            <RefreshCw className="size-4" aria-hidden />
-                            <span className="hidden sm:inline">Regenerate</span>
+                            {regeneratingId === item.id ? (
+                              <Loader2 className="size-4 animate-spin" aria-hidden />
+                            ) : (
+                              <RefreshCw className="size-4" aria-hidden />
+                            )}
+                            <span className="hidden sm:inline">
+                              {regeneratingId === item.id ? "Regenerating" : "Regenerate"}
+                            </span>
                           </Button>
+                          {regeneratingId === item.id ? (
+                            <span
+                              className="self-center text-xs text-muted-foreground sm:hidden"
+                              aria-live="polite"
+                            >
+                              Regenerating
+                            </span>
+                          ) : null}
                           <Button
                             type="button"
                             size="sm"

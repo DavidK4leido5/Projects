@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -54,19 +54,34 @@ export function PreferencesForm({
   const router = useRouter();
   const { setTheme } = useTheme();
   const [pending, startTransition] = useTransition();
+  const initialValues: Values = {
+    currency,
+    locale,
+    firstDayOfWeek,
+    financialMonthStart,
+    theme,
+  };
+  const [confirmed, setConfirmed] = useState<Values>(initialValues);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { currency, locale, firstDayOfWeek, financialMonthStart, theme },
+    defaultValues: initialValues,
   });
 
   function onSubmit(values: Values) {
+    const previous = confirmed;
+    // The selections are already local; apply the theme and keep them while
+    // the server confirms, then roll back together if the write fails.
+    setTheme(values.theme);
     startTransition(async () => {
       const result = await updateSettings({ ...values, dateFormat });
       if (!result.ok) {
+        setConfirmed(previous);
+        form.reset(previous);
+        setTheme(previous.theme);
         toast.error(result.error);
         return;
       }
-      setTheme(values.theme);
+      setConfirmed(values);
       toast.success("Preferences saved");
       router.refresh();
     });
@@ -210,7 +225,7 @@ export function PreferencesForm({
         <div>
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            Save preferences
+            {pending ? "Saving" : "Save preferences"}
           </Button>
         </div>
       </form>

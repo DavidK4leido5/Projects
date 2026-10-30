@@ -118,15 +118,16 @@ export function DeleteAccountForm({ email }: { email: string }) {
                 ) : (
                   <Trash2 className="size-4" aria-hidden />
                 )}
-                Delete account
+                {pending ? "Deleting" : "Delete account"}
               </Button>
             }
             title="Delete this account?"
             description="This removes your accounts, transactions, budgets, goals, reports, and receipt files. It cannot be undone."
-            confirmLabel="Delete everything"
+            confirmLabel={pending ? "Deleting" : "Delete everything"}
             onConfirm={() => form.handleSubmit(onSubmit)()}
             open={open}
             onOpenChange={setOpen}
+            pending={pending}
           />
         </div>
       </form>

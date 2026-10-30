@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/features/auth/auth-shell";
@@ -7,9 +8,20 @@ import { getAuthUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Create account" };
 
-export default async function SignupPage() {
-  if (await getAuthUser()) redirect("/dashboard");
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupCard />}>
+      <SignupBody />
+    </Suspense>
+  );
+}
 
+async function SignupBody() {
+  if (await getAuthUser()) redirect("/dashboard");
+  return <SignupCard />;
+}
+
+function SignupCard() {
   return (
     <AuthShell
       title="Create your account"

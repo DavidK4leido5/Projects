@@ -1,22 +1,10 @@
 import "server-only";
 
-import { addMonths } from "date-fns";
 import { and, asc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { budgets, categories, transactions } from "@repo/db/schema";
-import { budgetProgress, monthKey, percentChange, type BudgetState } from "@repo/finance";
+import { budgetProgress, percentChange, type BudgetState } from "@repo/finance";
 import { getDb } from "@/lib/db";
-
-/** Budgets are keyed by the first day of the month in the database. */
-const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
-
-export function isMonthKey(value: string): boolean {
-  return MONTH_PATTERN.test(value);
-}
-
-export function shiftMonth(month: string, delta: number): string {
-  const [year = "1970", monthNumber = "1"] = month.split("-");
-  return monthKey(addMonths(new Date(Number(year), Number(monthNumber) - 1, 1), delta));
-}
+import { shiftMonth } from "@/features/budgets/month";
 
 /** Local-time first and last instant of the month, matching how dates are stored. */
 export function monthRange(month: string): { from: Date; to: Date } {
@@ -24,10 +12,6 @@ export function monthRange(month: string): { from: Date; to: Date } {
   const y = Number(year);
   const m = Number(monthNumber);
   return { from: new Date(y, m - 1, 1), to: new Date(y, m, 0, 23, 59, 59, 999) };
-}
-
-export function monthAnchor(month: string): Date {
-  return monthRange(month).from;
 }
 
 export type BudgetRow = {
@@ -95,10 +79,19 @@ function spendTotals(
   return { byCategory, total };
 }
 
+/** Just enough of last month's budget to copy it into the current month. */
+export type BudgetLimit = {
+  id: string;
+  categoryId: string | null;
+  amount: number;
+  currency: string;
+  rollover: boolean;
+};
+
 export async function listBudgets(
   userId: string,
   month: string,
-): Promise<{ rows: BudgetRow[]; summary: BudgetSummary }> {
+): Promise<{ rows: BudgetRow[]; previousRows: BudgetLimit[]; summary: BudgetSummary }> {
   const db = getDb();
   const previousMonth = shiftMonth(month, -1);
   const current = monthRange(month);
@@ -166,6 +159,16 @@ export async function listBudgets(
       .map((row) => [row.categoryId ?? "overall", row]),
   );
 
+  const previousRows: BudgetLimit[] = budgetRows
+    .filter((row) => row.periodMonth === previousMonth + "-01")
+    .map((row) => ({
+      id: row.id,
+      categoryId: row.categoryId,
+      amount: row.amount,
+      currency: row.currency,
+      rollover: row.rollover,
+    }));
+
   const rows: BudgetRow[] = budgetRows
     .filter((row) => row.periodMonth === month + "-01")
     .map((row) => {
@@ -217,6 +220,7 @@ export async function listBudgets(
 
   return {
     rows,
+    previousRows,
     summary: {
       totalBudget,
       totalSpent,

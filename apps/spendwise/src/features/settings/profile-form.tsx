@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -28,17 +28,22 @@ type Values = z.infer<typeof schema>;
 export function ProfileForm({ name, email }: { name: string; email: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [savedName, setSavedName] = useState(name);
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { name } });
 
   function onSubmit(values: Values) {
+    const previousName = savedName;
+    setSavedName(values.name);
     startTransition(async () => {
-      const { error } = await authClient.updateUser({ name: values.name });
-      if (error) {
-        toast.error(error.message ?? "Could not update your name.");
-        return;
+      try {
+        const { error } = await authClient.updateUser({ name: values.name });
+        if (error) throw new Error(error.message ?? "Could not update your name.");
+        toast.success("Profile updated");
+        router.refresh();
+      } catch (cause) {
+        setSavedName(previousName);
+        toast.error(cause instanceof Error ? cause.message : "Could not update your name.");
       }
-      toast.success("Profile updated");
-      router.refresh();
     });
   }
 
@@ -67,11 +72,14 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
             </p>
           </div>
         </div>
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            Save profile
+            {pending ? "Saving" : "Save profile"}
           </Button>
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            Displayed as <span className="font-medium text-foreground">{savedName}</span>
+          </p>
         </div>
       </form>
     </Form>

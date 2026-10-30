@@ -6,36 +6,35 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@repo/ui";
-import { useMounted } from "@/lib/hooks";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const mounted = useMounted();
+  const activeTheme = theme === "light" || theme === "dark" ? theme : "system";
+  const Icon = activeTheme === "dark" ? Moon : activeTheme === "light" ? Sun : Monitor;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Change theme">
-          {mounted && theme === "dark" ? (
-            <Moon className="size-4" aria-hidden />
-          ) : (
-            <Sun className="size-4" aria-hidden />
-          )}
+          <Icon className="size-4" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-36">
-        <DropdownMenuItem onSelect={() => setTheme("light")}>
-          <Sun className="size-4" aria-hidden /> Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setTheme("dark")}>
-          <Moon className="size-4" aria-hidden /> Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setTheme("system")}>
-          <Monitor className="size-4" aria-hidden /> System
-        </DropdownMenuItem>
+        <DropdownMenuRadioGroup value={activeTheme} onValueChange={setTheme} aria-label="Theme">
+          <DropdownMenuRadioItem value="light">
+            <Sun className="size-4" aria-hidden /> Light
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            <Moon className="size-4" aria-hidden /> Dark
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            <Monitor className="size-4" aria-hidden /> System
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

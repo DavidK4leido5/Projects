@@ -1,11 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import {
   Button,
@@ -30,9 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@repo/ui";
+import type { PaymentMethod, RecurringFrequency } from "@repo/db/schema";
 import { formatMoney, toDateInput } from "@repo/finance";
 import { PAYMENT_METHODS } from "@/lib/defaults";
-import { createRule, updateRule } from "@/features/recurring/actions";
 import {
   FREQUENCY_LABELS,
   FREQUENCY_UNITS,
@@ -75,6 +72,23 @@ type Values = z.infer<typeof formSchema>;
 type AccountOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string; kind: "income" | "expense" };
 
+export type RuleFormValues = {
+  type: "income" | "expense";
+  amount: number;
+  currency: string;
+  accountId: string;
+  categoryId: string | null;
+  payee: string;
+  notes: string | null;
+  paymentMethod: PaymentMethod;
+  frequency: RecurringFrequency;
+  interval: number;
+  dayOfMonth: number | null;
+  weekday: number | null;
+  startDate: string;
+  endDate: string | null;
+};
+
 function emptyCategory(value: string | null): string {
   return value ?? "none";
 }
@@ -88,6 +102,7 @@ export function RuleDialog({
   trigger,
   open,
   onOpenChange,
+  onSave,
 }: {
   accounts: AccountOption[];
   categories: CategoryOption[];
@@ -97,12 +112,11 @@ export function RuleDialog({
   trigger?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onSave: (values: RuleFormValues) => void;
 }) {
-  const router = useRouter();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : uncontrolledOpen;
-  const [pending, startTransition] = useTransition();
 
   const [defaults] = useState<Values>(() => ({
     type: rule?.type ?? "expense",
@@ -134,35 +148,24 @@ export function RuleDialog({
     onOpenChange?.(next);
   }
 
-  function onSubmit(values: Values) {
-    startTransition(async () => {
-      const payload = {
-        type: values.type,
-        amount: values.amount,
-        currency: ruleCurrency,
-        accountId: values.accountId,
-        categoryId: values.categoryId === "" ? null : values.categoryId,
-        payee: values.payee.trim(),
-        notes: null,
-        paymentMethod: values.paymentMethod,
-        frequency: values.frequency,
-        interval: values.interval,
-        dayOfMonth: values.frequency === "monthly" ? values.dayOfMonth : null,
-        weekday: values.frequency === "weekly" ? values.weekday : null,
-        startDate: values.startDate,
-        endDate: null,
-      };
-
-      const result = rule ? await updateRule(rule.id, payload) : await createRule(payload);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(rule ? "Rule updated" : "Rule created");
-      setOpen(false);
-      router.refresh();
+  function onSubmit(values: Values): void {
+    onSave({
+      type: values.type,
+      amount: values.amount,
+      currency: ruleCurrency,
+      accountId: values.accountId,
+      categoryId: values.categoryId === "" ? null : values.categoryId,
+      payee: values.payee.trim(),
+      notes: null,
+      paymentMethod: values.paymentMethod,
+      frequency: values.frequency,
+      interval: values.interval,
+      dayOfMonth: values.frequency === "monthly" ? values.dayOfMonth : null,
+      weekday: values.frequency === "weekly" ? values.weekday : null,
+      startDate: values.startDate,
+      endDate: null,
     });
+    setOpen(false);
   }
 
   return (
@@ -471,9 +474,8 @@ export function RuleDialog({
         </Form>
 
         <DialogFooter>
-          <Button type="submit" form="rule-form" disabled={pending || accounts.length === 0}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : rule ? "Save rule" : "Create rule"}
+          <Button type="submit" form="rule-form" disabled={accounts.length === 0}>
+            {rule ? "Save rule" : "Create rule"}
           </Button>
         </DialogFooter>
       </DialogContent>

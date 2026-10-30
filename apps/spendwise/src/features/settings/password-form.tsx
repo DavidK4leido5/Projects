@@ -96,9 +96,9 @@ export function PasswordForm() {
           )}
         />
         <div>
-          <Button type="submit" size="sm" disabled={pending}>
+          <Button type="submit" size="sm" disabled={pending} aria-busy={pending || undefined}>
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            Change password
+            {pending ? "Changing password" : "Change password"}
           </Button>
         </div>
       </form>

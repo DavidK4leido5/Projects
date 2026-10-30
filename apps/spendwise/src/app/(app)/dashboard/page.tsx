@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { endOfMonth, startOfMonth } from "date-fns";
 import {
   AlertOctagon,
@@ -30,6 +31,7 @@ import {
   StatCard,
 } from "@repo/ui";
 import { budgetProgress, formatDate, formatMoney } from "@repo/finance";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { CategoryDonut } from "@/features/dashboard/category-donut";
 import { CashFlowChart } from "@/features/dashboard/cash-flow-chart";
 import { getDashboardData } from "@/features/dashboard/queries";
@@ -43,7 +45,15 @@ const STATE_ICON = {
   exceeded: AlertOctagon,
 } as const;
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DashboardBody />
+    </Suspense>
+  );
+}
+
+async function DashboardBody() {
   const user = await requireUser();
   const data = await getDashboardData(user.id);
   const { settings } = data;

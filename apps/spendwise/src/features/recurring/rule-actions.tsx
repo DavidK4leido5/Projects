@@ -1,9 +1,7 @@
 "use client";
 
 import { MoreHorizontal, Pause, Pencil, Play, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import {
   Button,
   ConfirmDialog,
@@ -13,10 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@repo/ui";
-import { deleteRule, toggleRule } from "@/features/recurring/actions";
-import { RuleDialog } from "@/features/recurring/rule-dialog";
-import { toFormSource } from "@/features/recurring/rule-meta";
 import type { RecurringRuleRow } from "@/features/recurring/queries";
+import { RuleDialog, type RuleFormValues } from "@/features/recurring/rule-dialog";
+import { toFormSource } from "@/features/recurring/rule-meta";
 
 type AccountOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string; kind: "income" | "expense" };
@@ -27,50 +24,27 @@ export function RuleActions({
   categories,
   currency,
   locale,
+  onSave,
+  onToggle,
+  onDelete,
 }: {
   rule: RecurringRuleRow;
   accounts: AccountOption[];
   categories: CategoryOption[];
   currency: string;
   locale: string;
+  onSave: (values: RuleFormValues) => void;
+  onToggle: () => void;
+  onDelete: () => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-
-  function toggle(): void {
-    startTransition(async () => {
-      const result = await toggleRule(rule.id, !rule.active);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success((rule.active ? "Paused " : "Resumed ") + rule.payee);
-      router.refresh();
-    });
-  }
-
-  async function remove(): Promise<void> {
-    const result = await deleteRule(rule.id);
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
-    toast.success("Deleted " + rule.payee);
-    router.refresh();
-  }
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={pending}
-            aria-label={"Actions for " + rule.payee}
-          >
+          <Button variant="ghost" size="icon" aria-label={"Actions for " + rule.payee}>
             <MoreHorizontal className="size-4" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
@@ -79,7 +53,7 @@ export function RuleActions({
             Edit rule
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={toggle}
+            onSelect={onToggle}
             icon={rule.active ? <Pause aria-hidden /> : <Play aria-hidden />}
           >
             {rule.active ? "Pause rule" : "Resume rule"}
@@ -104,6 +78,7 @@ export function RuleActions({
           categories={categories}
           currency={currency}
           locale={locale}
+          onSave={onSave}
         />
       ) : null}
 
@@ -117,8 +92,7 @@ export function RuleActions({
           " will stop appearing in upcoming bills."
         }
         confirmLabel="Delete rule"
-        onConfirm={remove}
-        pending={pending}
+        onConfirm={onDelete}
       />
     </>
   );

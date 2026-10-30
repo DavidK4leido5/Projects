@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { ArrowLeftRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import {
   StatCard,
 } from "@repo/ui";
 import { formatDate, formatMoney, percentChange } from "@repo/finance";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { CategoryDonut } from "@/features/dashboard/category-donut";
 import { CashFlowChart } from "@/features/dashboard/cash-flow-chart";
 import { getDashboardData } from "@/features/dashboard/queries";
@@ -20,7 +22,15 @@ import { requireUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Cash flow" };
 
-export default async function CashFlowPage() {
+export default function CashFlowPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <CashFlowBody />
+    </Suspense>
+  );
+}
+
+async function CashFlowBody() {
   const user = await requireUser();
   const data = await getDashboardData(user.id);
   const { settings } = data;

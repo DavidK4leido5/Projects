@@ -8,7 +8,7 @@ import { budgets, categories } from "@repo/db/schema";
 import { actionError, type ActionResult } from "@/lib/action";
 import { requireUserId } from "@/lib/auth/session";
 import { getDb } from "@/lib/db";
-import { shiftMonth } from "@/features/budgets/queries";
+import { shiftMonth } from "@/features/budgets/month";
 
 const idSchema = z.uuid("Choose a valid budget");
 const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Choose a month like 2026-10");

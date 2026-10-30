@@ -1,9 +1,21 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const emptySubscribe = () => () => {};
+
+/** Settles on a value only after it has stopped changing for `delay` ms. */
+export function useDebouncedValue<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+
+  return debounced;
+}
 
 /** True after hydration, without an effect-driven second render. */
 export function useMounted(): boolean {
@@ -30,6 +42,30 @@ export function useMediaQuery(query: string): boolean {
     () => window.matchMedia(query).matches,
     () => false,
   );
+}
+
+/**
+ * Object URL for a freshly picked file. The URL is revoked when it is replaced
+ * or the component unmounts, so previews never leak blob memory.
+ */
+export function useObjectUrl(): [string | null, (file: File | null) => void] {
+  const [url, setUrl] = useState<string | null>(null);
+  const active = useRef<string | null>(null);
+
+  const select = useCallback((file: File | null) => {
+    if (active.current) URL.revokeObjectURL(active.current);
+    active.current = file ? URL.createObjectURL(file) : null;
+    setUrl(active.current);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (active.current) URL.revokeObjectURL(active.current);
+      active.current = null;
+    };
+  }, []);
+
+  return [url, select];
 }
 
 /** Calls back on a bare key press unless the user is typing in a field. */
@@ -96,4 +132,31 @@ export function useServiceWorker(): void {
     window.addEventListener("load", register);
     return () => window.removeEventListener("load", register);
   }, []);
+}
+let unreadCount: number | null = null;
+const unreadListeners = new Set<() => void>();
+
+/** Shared optimistic unread count for the header bell and the inbox. */
+export function setNotificationUnread(count: number): void {
+  unreadCount = Math.max(0, count);
+  for (const listener of unreadListeners) listener();
+}
+
+export function useNotificationUnread(initial: number): number {
+  const value = useSyncExternalStore(
+    (listener) => {
+      unreadListeners.add(listener);
+      return () => unreadListeners.delete(listener);
+    },
+    () => unreadCount ?? initial,
+    () => initial,
+  );
+
+  useEffect(() => {
+    // Initialize once. After an optimistic clear, remounting the header must
+    // not resurrect the stale server count from a cached RSC payload.
+    if (unreadCount === null) setNotificationUnread(initial);
+  }, [initial]);
+
+  return value;
 }

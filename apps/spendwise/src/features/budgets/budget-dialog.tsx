@@ -1,11 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useId, useState, useTransition, type ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import {
   Button,
@@ -31,7 +29,6 @@ import {
   SelectValue,
   Switch,
 } from "@repo/ui";
-import { upsertBudget } from "@/features/budgets/actions";
 import type { BudgetCategory } from "@/features/budgets/queries";
 
 const formSchema = z.object({
@@ -42,6 +39,12 @@ const formSchema = z.object({
 
 type Values = z.infer<typeof formSchema>;
 
+export type BudgetFormValues = {
+  categoryId: string | null;
+  amount: number;
+  rollover: boolean;
+};
+
 type BudgetDraft = {
   categoryId: string | null;
   amount: number;
@@ -50,22 +53,20 @@ type BudgetDraft = {
 };
 
 export function BudgetDialog({
-  month,
   currency,
   categories,
   budget,
   trigger,
+  onSave,
 }: {
-  month: string;
   currency: string;
   categories: BudgetCategory[];
   budget?: BudgetDraft;
   trigger?: ReactNode;
+  onSave: (values: BudgetFormValues) => void;
 }) {
-  const router = useRouter();
   const formId = useId();
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
 
   const form = useForm<Values>({
     resolver: zodResolver(formSchema),
@@ -78,28 +79,14 @@ export function BudgetDialog({
 
   const nameOf = new Map(categories.map((category) => [category.id, category.name]));
 
-  function onSubmit(values: Values) {
-    startTransition(async () => {
-      const result = await upsertBudget({
-        categoryId: values.categoryId === "overall" ? null : values.categoryId,
-        periodMonth: month,
-        amount: values.amount,
-        currency: budget?.currency ?? currency,
-        rollover: values.rollover,
-      });
-
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(budget ? "Budget updated" : "Budget added");
-      if (!budget) {
-        form.reset({ categoryId: "overall", amount: 0, rollover: false });
-      }
-      setOpen(false);
-      router.refresh();
+  function onSubmit(values: Values): void {
+    onSave({
+      categoryId: values.categoryId === "overall" ? null : values.categoryId,
+      amount: values.amount,
+      rollover: values.rollover,
     });
+    if (!budget) form.reset({ categoryId: "overall", amount: 0, rollover: false });
+    setOpen(false);
   }
 
   return (
@@ -202,9 +189,8 @@ export function BudgetDialog({
           </form>
         </Form>
         <DialogFooter>
-          <Button type="submit" form={formId} disabled={pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : budget ? "Save changes" : "Create budget"}
+          <Button type="submit" form={formId}>
+            {budget ? "Save changes" : "Create budget"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,11 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import {
   Button,
@@ -33,14 +30,21 @@ import {
 import { categoryInputSchema } from "@repo/finance";
 import { cn } from "@repo/shared";
 import type { CategoryKind } from "@repo/db/schema";
-import { createCategory, updateCategory } from "@/features/categories/actions";
-import type { CategoryNode } from "@/features/categories/queries";
+import { descendantCategoryIds, type FlatCategory } from "@/features/categories/category-tree";
 
 const schema = categoryInputSchema
   .pick({ name: true, kind: true, color: true })
   .extend({ parentId: z.string() });
 
 type Values = z.infer<typeof schema>;
+
+export type CategoryFormValues = {
+  name: string;
+  kind: CategoryKind;
+  parentId: string | null;
+  color: string;
+  icon: string;
+};
 
 const DOT_CLASSES: Record<string, string> = {
   emerald: "bg-chart-1",
@@ -54,10 +58,6 @@ const DOT_CLASSES: Record<string, string> = {
   slate: "bg-muted-foreground",
 };
 
-function descendantIds(node: CategoryNode): string[] {
-  return node.children.flatMap((child) => [child.id, ...descendantIds(child)]);
-}
-
 export function CategoryDialog({
   categories,
   category,
@@ -65,17 +65,18 @@ export function CategoryDialog({
   trigger,
   open: controlledOpen,
   onOpenChange,
+  onSubmit: onCategorySubmit,
 }: {
-  categories: CategoryNode[];
-  category?: CategoryNode;
+  categories: FlatCategory[];
+  category?: FlatCategory;
   defaultKind?: CategoryKind;
   trigger?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onSubmit: (values: CategoryFormValues) => void;
 }) {
-  const router = useRouter();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const formId = useId();
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
 
@@ -97,33 +98,23 @@ export function CategoryDialog({
   });
 
   const kind = useWatch({ control: form.control, name: "kind" });
-  const excluded = category ? [category.id, ...descendantIds(category)] : [];
+  const excluded = category ? descendantCategoryIds(categories, category.id) : new Set<string>();
   const parentOptions = categories.filter(
-    (node) => node.kind === kind && !excluded.includes(node.id) && !node.archived,
+    (node) =>
+      node.kind === kind && node.parentId === null && !excluded.has(node.id) && !node.archived,
   );
 
-  function onSubmit(values: Values) {
-    startTransition(async () => {
-      const payload = {
-        name: values.name,
-        kind: values.kind,
-        parentId: values.parentId || null,
-        color: values.color,
-        icon: category?.icon ?? "tag",
-      };
-      const result = category
-        ? await updateCategory({ ...payload, id: category.id })
-        : await createCategory(payload);
-
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(category ? "Category updated" : "Category added");
-      if (!category) form.reset({ name: "", kind: values.kind, parentId: "", color: "slate" });
-      setOpen(false);
-      router.refresh();
+  function submit(values: Values) {
+    setOpen(false);
+    if (!category) {
+      form.reset({ name: "", kind: values.kind, parentId: "", color: "slate" });
+    }
+    onCategorySubmit({
+      name: values.name,
+      kind: values.kind,
+      parentId: values.parentId || null,
+      color: values.color,
+      icon: category?.icon ?? "tag",
     });
   }
 
@@ -140,8 +131,8 @@ export function CategoryDialog({
 
         <Form {...form}>
           <form
-            id="category-form"
-            onSubmit={form.handleSubmit(onSubmit)}
+            id={formId}
+            onSubmit={form.handleSubmit(submit)}
             className="flex flex-col gap-4"
             noValidate
           >
@@ -172,7 +163,6 @@ export function CategoryDialog({
                         field.onChange(next);
                         form.setValue("parentId", "");
                       }}
-                      disabled={Boolean(category)}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -260,9 +250,8 @@ export function CategoryDialog({
         </Form>
 
         <DialogFooter>
-          <Button type="submit" form="category-form" disabled={pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : category ? "Save changes" : "Add category"}
+          <Button type="submit" form={formId}>
+            {category ? "Save changes" : "Add category"}
           </Button>
         </DialogFooter>
       </DialogContent>

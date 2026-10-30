@@ -1,56 +1,39 @@
 "use client";
 
-import { Archive, MoreHorizontal, RotateCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { toast } from "sonner";
+import { Archive, MoreHorizontal, Pencil, RotateCcw } from "lucide-react";
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@repo/ui";
-import { setAccountArchived } from "@/features/accounts/actions";
 
 export function AccountActions({
-  id,
   name,
   archived,
+  onEdit,
+  onToggleArchived,
 }: {
-  id: string;
   name: string;
   archived: boolean;
+  onEdit: () => void;
+  onToggleArchived: () => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  function toggle() {
-    startTransition(async () => {
-      const result = await setAccountArchived(id, !archived);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success((archived ? "Restored " : "Archived ") + name);
-      router.refresh();
-    });
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" disabled={pending} aria-label={"Actions for " + name}>
+        <Button variant="ghost" size="icon" aria-label={"Actions for " + name}>
           <MoreHorizontal className="size-4" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={toggle}>
-          {archived ? (
-            <RotateCcw className="size-4" aria-hidden />
-          ) : (
-            <Archive className="size-4" aria-hidden />
-          )}
+        <DropdownMenuItem icon={<Pencil />} onSelect={onEdit}>
+          Edit account
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem icon={archived ? <RotateCcw /> : <Archive />} onSelect={onToggleArchived}>
           {archived ? "Restore account" : "Archive account"}
         </DropdownMenuItem>
       </DropdownMenuContent>

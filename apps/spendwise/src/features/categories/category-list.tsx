@@ -9,9 +9,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import {
   Badge,
   Button,
@@ -34,25 +32,35 @@ import {
   SelectValue,
 } from "@repo/ui";
 import type { CategoryKind } from "@repo/db/schema";
-import { archiveCategory, deleteCategory, reorderCategory } from "@/features/categories/actions";
-import { CategoryDialog } from "@/features/categories/category-dialog";
-import type { CategoryNode } from "@/features/categories/queries";
-
-function flatten(nodes: CategoryNode[]): CategoryNode[] {
-  return nodes.flatMap((node) => [node, ...flatten(node.children)]);
-}
+import { CategoryDialog, type CategoryFormValues } from "@/features/categories/category-dialog";
+import {
+  categoryTotalCounts,
+  compareCategories,
+  descendantCategoryIds,
+  type FlatCategory,
+} from "@/features/categories/category-tree";
 
 export function CategoryList({
-  categories,
+  nodes,
   kind,
+  onReorder,
+  onArchive,
+  onUpdate,
+  onDelete,
 }: {
-  categories: CategoryNode[];
+  nodes: FlatCategory[];
   kind: CategoryKind;
+  onReorder: (id: string, direction: "up" | "down") => void;
+  onArchive: (node: FlatCategory) => void;
+  onUpdate: (node: FlatCategory, values: CategoryFormValues) => void;
+  onDelete: (node: FlatCategory, reassignTo: string | null) => void;
 }) {
-  const active = flatten(categories).filter((node) => node.kind === kind && !node.archived);
+  const kindNodes = nodes.filter((node) => node.kind === kind);
+  const active = kindNodes.filter((node) => !node.archived).sort(compareCategories);
   const activeIds = new Set(active.map((node) => node.id));
   const roots = active.filter((node) => node.parentId === null || !activeIds.has(node.parentId));
-  const archived = flatten(categories).filter((node) => node.kind === kind && node.archived);
+  const archived = kindNodes.filter((node) => node.archived).sort(compareCategories);
+  const totals = categoryTotalCounts(nodes);
 
   return (
     <div className="flex flex-col gap-4">
@@ -68,9 +76,14 @@ export function CategoryList({
               <li key={node.id} className="py-1 first:pt-0 last:pb-0">
                 <CategoryRow
                   node={node}
-                  categories={categories}
+                  nodes={nodes}
+                  total={totals.get(node.id) ?? node.transactionCount}
                   canUp={index > 0}
                   canDown={index < roots.length - 1}
+                  onReorder={onReorder}
+                  onArchive={onArchive}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
                 />
                 {children.length > 0 ? (
                   <ul className="ml-5 flex flex-col divide-y divide-border border-l border-border pl-2">
@@ -78,9 +91,14 @@ export function CategoryList({
                       <li key={child.id} className="py-1 first:pt-0 last:pb-0">
                         <CategoryRow
                           node={child}
-                          categories={categories}
+                          nodes={nodes}
+                          total={totals.get(child.id) ?? child.transactionCount}
                           canUp={childIndex > 0}
                           canDown={childIndex < children.length - 1}
+                          onReorder={onReorder}
+                          onArchive={onArchive}
+                          onUpdate={onUpdate}
+                          onDelete={onDelete}
                         />
                       </li>
                     ))}
@@ -100,7 +118,16 @@ export function CategoryList({
           <ul className="flex flex-col divide-y divide-border">
             {archived.map((node) => (
               <li key={node.id} className="py-1 first:pt-0 last:pb-0">
-                <CategoryRow node={node} categories={categories} reorderable={false} />
+                <CategoryRow
+                  node={node}
+                  nodes={nodes}
+                  total={totals.get(node.id) ?? node.transactionCount}
+                  reorderable={false}
+                  onReorder={onReorder}
+                  onArchive={onArchive}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                />
               </li>
             ))}
           </ul>
@@ -112,44 +139,29 @@ export function CategoryList({
 
 function CategoryRow({
   node,
-  categories,
+  nodes,
+  total,
   canUp = false,
   canDown = false,
   reorderable = true,
+  onReorder,
+  onArchive,
+  onUpdate,
+  onDelete,
 }: {
-  node: CategoryNode;
-  categories: CategoryNode[];
+  node: FlatCategory;
+  nodes: FlatCategory[];
+  total: number;
   canUp?: boolean;
   canDown?: boolean;
   reorderable?: boolean;
+  onReorder: (id: string, direction: "up" | "down") => void;
+  onArchive: (node: FlatCategory) => void;
+  onUpdate: (node: FlatCategory, values: CategoryFormValues) => void;
+  onDelete: (node: FlatCategory, reassignTo: string | null) => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-
-  function move(direction: "up" | "down") {
-    startTransition(async () => {
-      const result = await reorderCategory({ id: node.id, direction });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  function toggleArchived() {
-    startTransition(async () => {
-      const result = await archiveCategory({ id: node.id, archived: !node.archived });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success((node.archived ? "Restored " : "Archived ") + node.name);
-      router.refresh();
-    });
-  }
 
   return (
     <div className="flex min-w-0 items-center gap-2 py-1.5">
@@ -161,9 +173,9 @@ function CategoryRow({
       {node.archived ? <Badge variant="secondary">Archived</Badge> : null}
       <span
         className="shrink-0 text-xs tabular-nums text-muted-foreground"
-        title={node.totalCount + " transactions"}
+        title={total + " transactions"}
       >
-        {node.totalCount}
+        {total}
       </span>
 
       <div className="flex shrink-0 items-center gap-0.5">
@@ -175,8 +187,8 @@ function CategoryRow({
               size="icon"
               className="size-7"
               aria-label={"Move " + node.name + " up"}
-              disabled={!canUp || pending}
-              onClick={() => move("up")}
+              disabled={!canUp}
+              onClick={() => onReorder(node.id, "up")}
             >
               <ChevronUp className="size-4" aria-hidden />
             </Button>
@@ -186,8 +198,8 @@ function CategoryRow({
               size="icon"
               className="size-7"
               aria-label={"Move " + node.name + " down"}
-              disabled={!canDown || pending}
-              onClick={() => move("down")}
+              disabled={!canDown}
+              onClick={() => onReorder(node.id, "down")}
             >
               <ChevronDown className="size-4" aria-hidden />
             </Button>
@@ -201,7 +213,6 @@ function CategoryRow({
               size="icon"
               className="size-7"
               aria-label={"Actions for " + node.name}
-              disabled={pending}
             >
               <MoreHorizontal className="size-4" aria-hidden />
             </Button>
@@ -212,7 +223,7 @@ function CategoryRow({
             </DropdownMenuItem>
             <DropdownMenuItem
               icon={node.archived ? <RotateCcw /> : <Archive />}
-              onSelect={toggleArchived}
+              onSelect={() => onArchive(node)}
             >
               {node.archived ? "Restore" : "Archive"}
             </DropdownMenuItem>
@@ -224,17 +235,21 @@ function CategoryRow({
         </DropdownMenu>
       </div>
 
-      <CategoryDialog
-        categories={categories}
-        category={node}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
+      {editOpen ? (
+        <CategoryDialog
+          categories={nodes}
+          category={node}
+          open
+          onOpenChange={setEditOpen}
+          onSubmit={(values) => onUpdate(node, values)}
+        />
+      ) : null}
       <DeleteCategoryDialog
         node={node}
-        categories={categories}
+        categories={nodes}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+        onDelete={(reassignTo) => onDelete(node, reassignTo)}
       />
     </div>
   );
@@ -245,36 +260,27 @@ function DeleteCategoryDialog({
   categories,
   open,
   onOpenChange,
+  onDelete,
 }: {
-  node: CategoryNode;
-  categories: CategoryNode[];
+  node: FlatCategory;
+  categories: FlatCategory[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDelete: (reassignTo: string | null) => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [reassignTo, setReassignTo] = useState("");
 
-  const excluded = new Set([node.id, ...flatten(node.children).map((child) => child.id)]);
-  const options = flatten(categories).filter(
-    (option) => option.kind === node.kind && !option.archived && !excluded.has(option.id),
-  );
+  const excluded = descendantCategoryIds(categories, node.id);
+  const options = categories
+    .filter((option) => option.kind === node.kind && !option.archived && !excluded.has(option.id))
+    .sort(compareCategories);
+  const hasChildren = categories.some((category) => category.parentId === node.id);
 
   function remove() {
-    startTransition(async () => {
-      const result = await deleteCategory({
-        id: node.id,
-        reassignTo: reassignTo === "none" ? null : reassignTo,
-      });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Deleted " + node.name);
-      setReassignTo("");
-      onOpenChange(false);
-      router.refresh();
-    });
+    const target = reassignTo === "none" ? null : reassignTo;
+    setReassignTo("");
+    onOpenChange(false);
+    onDelete(target);
   }
 
   return (
@@ -294,7 +300,7 @@ function DeleteCategoryDialog({
               : node.transactionCount +
                 (node.transactionCount === 1 ? " transaction uses" : " transactions use") +
                 " this category. Choose where they should go."}{" "}
-            {node.children.length > 0 ? "Its subcategories move up to this category's parent." : ""}
+            {hasChildren ? "Its subcategories move up to this category's parent." : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -321,13 +327,8 @@ function DeleteCategoryDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={!reassignTo || pending}
-            onClick={remove}
-          >
-            {pending ? "Deleting" : "Delete category"}
+          <Button type="button" variant="destructive" disabled={!reassignTo} onClick={remove}>
+            Delete category
           </Button>
         </DialogFooter>
       </DialogContent>

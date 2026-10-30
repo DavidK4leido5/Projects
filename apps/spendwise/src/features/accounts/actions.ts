@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { accountInputSchema } from "@repo/finance";
 import { accounts } from "@repo/db/schema";
 import { actionError, type ActionResult } from "@/lib/action";
@@ -42,6 +43,38 @@ export async function createAccount(input: AccountInput): Promise<ActionResult<{
     revalidatePath("/dashboard");
     revalidatePath("/transactions");
     return { ok: true, data: { id: row.id } };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function updateAccount(input: AccountInput & { id: string }): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId();
+    const values = accountInputSchema.extend({ id: z.uuid("account") }).parse(input);
+
+    const [row] = await getDb()
+      .update(accounts)
+      .set({
+        name: values.name,
+        type: values.type,
+        startingBalance: values.startingBalance,
+        currency: values.currency.toUpperCase(),
+        color: values.color,
+        icon: values.icon,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(accounts.id, values.id), eq(accounts.userId, userId), isNull(accounts.deletedAt)),
+      )
+      .returning({ id: accounts.id });
+
+    if (!row) throw new Error("That account is not available.");
+
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    revalidatePath("/transactions");
+    return { ok: true };
   } catch (error) {
     return actionError(error);
   }

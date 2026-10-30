@@ -1,13 +1,23 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button, PageHeader } from "@repo/ui";
 import { CsvImportWizard } from "@/features/transactions/csv-import";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { requireUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Import transactions" };
 
-export default async function ImportTransactionsPage() {
+export default function ImportTransactionsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ImportBody />
+    </Suspense>
+  );
+}
+
+async function ImportBody() {
   await requireUser();
 
   return (

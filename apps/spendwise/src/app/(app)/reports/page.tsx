@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PageHeader } from "@repo/ui";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { ReportBuilder } from "@/features/reports/report-builder";
 import { listReportHistory } from "@/features/reports/queries";
 import { getSettings } from "@/features/settings/queries";
@@ -8,7 +10,15 @@ import { requireUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Reports" };
 
-export default async function ReportsPage() {
+export default function ReportsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ReportsBody />
+    </Suspense>
+  );
+}
+
+async function ReportsBody() {
   const user = await requireUser();
   const [settings, options, history] = await Promise.all([
     getSettings(user.id),

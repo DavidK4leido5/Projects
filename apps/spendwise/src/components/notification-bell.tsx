@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@repo/ui";
-import { formatDate } from "@repo/finance";
+import { formatNotificationDate } from "@/features/notifications/format";
 import { cn } from "@repo/shared";
 import { markAllRead, markRead } from "@/features/notifications/actions";
 import type { NotificationItem } from "@/features/notifications/queries";
+import { setNotificationUnread, useNotificationUnread } from "@/lib/hooks";
 
 /**
  * Bell + unread badge. Renders from server-supplied data, then keeps its own
@@ -24,9 +24,8 @@ export function NotificationBell({
   recent: NotificationItem[];
   locale?: string;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [unread, setUnread] = useState(initialUnreadCount);
+  const unread = useNotificationUnread(initialUnreadCount);
   const [items, setItems] = useState(recent);
   const [pending, startTransition] = useTransition();
 
@@ -37,7 +36,7 @@ export function NotificationBell({
     setItems((current) =>
       current.map((entry) => (entry.id === item.id ? { ...entry, readAt: new Date() } : entry)),
     );
-    setUnread((value) => Math.max(0, value - 1));
+    setNotificationUnread(unread - 1);
 
     void markRead(item.id).then((result) => {
       if (!result.ok) toast.error(result.error);
@@ -54,8 +53,7 @@ export function NotificationBell({
       setItems((current) =>
         current.map((entry) => ({ ...entry, readAt: entry.readAt ?? new Date() })),
       );
-      setUnread(0);
-      router.refresh();
+      setNotificationUnread(0);
     });
   }
 
@@ -121,7 +119,7 @@ export function NotificationBell({
                       {item.body}
                     </span>
                     <span className="mt-1 block text-xs tabular-nums text-muted-foreground">
-                      {formatDate(item.createdAt, locale, "MMM d, h:mm a")}
+                      {formatNotificationDate(item.createdAt, locale)}
                     </span>
                   </span>
                 </Link>

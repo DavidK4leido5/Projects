@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ArrowLeftRight, Download, Plus, Upload } from "lucide-react";
 import Link from "next/link";
 import { Button, PageHeader } from "@repo/ui";
-import { TransactionFiltersForm } from "@/features/transactions/transaction-filters";
+import { PageSkeleton } from "@/components/page-skeleton";
+import { TransactionsFilters } from "@/features/transactions/transaction-filters";
+import { TransactionPager } from "@/features/transactions/transaction-pager";
 import { TransactionsTable } from "@/features/transactions/transactions-table";
 import {
   listTransactionOptions,
@@ -21,7 +24,19 @@ function first(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
-export default async function TransactionsPage({
+export default function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <TransactionsBody searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function TransactionsBody({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -70,13 +85,6 @@ export default async function TransactionsPage({
   if (to) baseParams.set("to", to);
   if (sort !== "date_desc") baseParams.set("sort", sort);
 
-  function hrefForPage(target: number): string {
-    const next = new URLSearchParams(baseParams);
-    if (target > 1) next.set("page", String(target));
-    const query = next.toString();
-    return query ? "/transactions?" + query : "/transactions";
-  }
-
   const start = result.total === 0 ? 0 : (result.page - 1) * 20 + 1;
   const end = Math.min(result.total, result.page * 20);
   const filterQuery = baseParams.toString();
@@ -115,63 +123,40 @@ export default async function TransactionsPage({
         }
       />
 
-      <TransactionFiltersForm
+      <TransactionsFilters
         accounts={options.accounts}
         categories={options.categories}
         values={{ q, type: type ?? "", account, category, from, to, sort }}
       />
 
-      <TransactionsTable
-        rows={result.rows}
-        locale={settings.locale}
-        currency={settings.currency}
-        accounts={options.accounts}
-        categories={options.categories}
-        tags={options.tags}
-        emptyAction
-      />
+      <div id="transactions-results" className="flex flex-col gap-4">
+        <TransactionsTable
+          rows={result.rows}
+          locale={settings.locale}
+          currency={settings.currency}
+          accounts={options.accounts}
+          categories={options.categories}
+          tags={options.tags}
+          emptyAction
+        />
 
-      {result.total > 0 ? (
-        <nav aria-label="Pagination" className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Showing {start}–{end} of {result.total}
+        {result.total > 0 ? (
+          <TransactionPager
+            page={result.page}
+            pageCount={result.pageCount}
+            total={result.total}
+            start={start}
+            end={end}
+          />
+        ) : (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ArrowLeftRight className="size-4" aria-hidden />
+            Nothing here yet. Press{" "}
+            <kbd className="rounded border border-border px-1.5 py-0.5 text-xs">n</kbd> anywhere to
+            add one.
           </p>
-          <div className="flex items-center gap-2">
-            {result.page > 1 ? (
-              <Button asChild variant="outline" size="sm">
-                <Link href={hrefForPage(result.page - 1)} rel="prev">
-                  Previous
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" disabled>
-                Previous
-              </Button>
-            )}
-            <span className="text-xs text-muted-foreground">
-              Page {result.page} of {result.pageCount}
-            </span>
-            {result.page < result.pageCount ? (
-              <Button asChild variant="outline" size="sm">
-                <Link href={hrefForPage(result.page + 1)} rel="next">
-                  Next
-                </Link>
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" disabled>
-                Next
-              </Button>
-            )}
-          </div>
-        </nav>
-      ) : (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <ArrowLeftRight className="size-4" aria-hidden />
-          Nothing here yet. Press{" "}
-          <kbd className="rounded border border-border px-1.5 py-0.5 text-xs">n</kbd> anywhere to
-          add one.
-        </p>
-      )}
+        )}
+      </div>
     </div>
   );
 }

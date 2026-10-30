@@ -33,7 +33,17 @@ export async function syncReminders(userId: string): Promise<void> {
   });
 }
 
-async function unreadTitles(tx: Tx, userId: string, type: NotificationType): Promise<Set<string>> {
+/**
+ * Recently created reminders with these titles already exist, read or unread.
+ * Without the read check, marking all read immediately re-inserted the same
+ * alerts on the next refresh. Seven days lets a monthly bill alert again.
+ */
+async function recentTitles(
+  tx: Tx,
+  userId: string,
+  type: NotificationType,
+  now: Date,
+): Promise<Set<string>> {
   const rows = await tx
     .select({ title: notifications.title })
     .from(notifications)
@@ -41,7 +51,7 @@ async function unreadTitles(tx: Tx, userId: string, type: NotificationType): Pro
       and(
         eq(notifications.userId, userId),
         eq(notifications.type, type),
-        isNull(notifications.readAt),
+        gte(notifications.createdAt, addDays(now, -7)),
       ),
     );
 
@@ -72,7 +82,7 @@ async function syncBillReminders(tx: Tx, userId: string, now: Date): Promise<voi
 
   if (rules.length === 0) return;
 
-  const seen = await unreadTitles(tx, userId, "bill_due");
+  const seen = await recentTitles(tx, userId, "bill_due", now);
   const rows = rules
     .map((rule) => ({
       userId,
@@ -141,7 +151,7 @@ async function syncBudgetAlerts(tx: Tx, userId: string, now: Date): Promise<void
 
   if (exceeded.length === 0) return;
 
-  const seen = await unreadTitles(tx, userId, "budget_alert");
+  const seen = await recentTitles(tx, userId, "budget_alert", now);
   const rows = exceeded
     .map(({ budget, spent }) => ({
       userId,

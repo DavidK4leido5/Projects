@@ -1,6 +1,6 @@
 import "server-only";
 
-import { addDays, endOfDay, startOfDay } from "date-fns";
+import { addDays, endOfDay } from "date-fns";
 import { and, asc, desc, eq, gte, isNull, isNotNull, lte, or } from "drizzle-orm";
 import {
   accounts,
@@ -10,7 +10,8 @@ import {
   type TransactionType,
 } from "@repo/db/schema";
 import { toDateInput } from "@repo/finance";
-import { monthlyAmount, type RuleFormSource } from "@/features/recurring/rule-meta";
+import { deriveStats } from "@/features/recurring/derive";
+import { type RuleFormSource } from "@/features/recurring/rule-meta";
 import { getDb } from "@/lib/db";
 
 export type RecurringRuleRow = RuleFormSource & {
@@ -121,38 +122,7 @@ export type RecurringStats = {
 };
 
 export async function getRecurringStats(userId: string): Promise<RecurringStats> {
-  const now = new Date();
-  const today = startOfDay(now);
-  const weekEnd = endOfDay(addDays(now, 7));
-
-  const rows = await getDb()
-    .select({
-      type: recurringRules.type,
-      amount: recurringRules.amount,
-      frequency: recurringRules.frequency,
-      interval: recurringRules.interval,
-      nextRunAt: recurringRules.nextRunAt,
-    })
-    .from(recurringRules)
-    .where(
-      and(
-        eq(recurringRules.userId, userId),
-        eq(recurringRules.active, true),
-        isNull(recurringRules.deletedAt),
-      ),
-    );
-
-  let dueThisWeek = 0;
-  let overdueCount = 0;
-  let monthlyCost = 0;
-
-  for (const row of rows) {
-    if (row.nextRunAt <= weekEnd) dueThisWeek += 1;
-    if (row.nextRunAt < today) overdueCount += 1;
-    if (row.type === "expense") monthlyCost += monthlyAmount(row);
-  }
-
-  return { activeCount: rows.length, dueThisWeek, overdueCount, monthlyCost };
+  return deriveStats(await listRules(userId));
 }
 
 /** Most recent transaction posted by a rule, for the "last posted" hint. */

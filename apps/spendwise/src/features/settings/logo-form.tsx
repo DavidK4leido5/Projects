@@ -7,55 +7,78 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@repo/ui";
 import { removeReportLogo, uploadReportLogo } from "@/features/settings/actions";
+import { useObjectUrl } from "@/lib/hooks";
 
 export function LogoForm({ currentUrl }: { currentUrl: string | null }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [previewUrl, setPreview] = useObjectUrl();
+  const shownUrl = previewUrl ?? currentUrl;
 
   function onFile(file: File | null) {
     if (!file) return;
     setFileName(file.name);
+    setPreview(file);
     const data = new FormData();
     data.set("file", file);
     startTransition(async () => {
-      const result = await uploadReportLogo(data);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
+      setBusy("upload");
+      try {
+        const result = await uploadReportLogo(data);
+        if (!result.ok) {
+          setPreview(null);
+          setFileName(null);
+          toast.error(result.error);
+          return;
+        }
+        toast.success("Report logo updated");
+        router.refresh();
+      } finally {
+        setBusy(null);
       }
-      toast.success("Report logo updated");
-      router.refresh();
     });
   }
 
   function remove() {
     startTransition(async () => {
-      const result = await removeReportLogo();
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
+      setBusy("remove");
+      try {
+        const result = await removeReportLogo();
+        if (!result.ok) {
+          toast.error(result.error);
+          return;
+        }
+        setPreview(null);
+        setFileName(null);
+        toast.success("Report logo removed");
+        router.refresh();
+      } finally {
+        setBusy(null);
       }
-      toast.success("Report logo removed");
-      router.refresh();
     });
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {currentUrl ? (
+      {shownUrl ? (
         <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/40 p-3">
           <Image
-            src={currentUrl}
-            alt="Current report logo"
+            src={shownUrl}
+            alt={previewUrl ? "Selected report logo preview" : "Current report logo"}
             width={160}
             height={48}
             className="h-10 w-auto max-w-[160px] object-contain"
             unoptimized
           />
           <Button type="button" variant="ghost" size="sm" onClick={remove} disabled={pending}>
-            <Trash2 className="size-4" aria-hidden />
-            Remove
+            {busy === "remove" ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Trash2 className="size-4" aria-hidden />
+            )}
+            {busy === "remove" ? "Removing" : "Remove"}
           </Button>
         </div>
       ) : (
@@ -67,18 +90,21 @@ export function LogoForm({ currentUrl }: { currentUrl: string | null }) {
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="outline" size="sm" disabled={pending}>
           <label className="cursor-pointer">
-            {pending ? (
+            {busy === "upload" ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             ) : (
               <ImagePlus className="size-4" aria-hidden />
             )}
-            {pending ? "Uploading" : "Upload logo"}
+            {busy === "upload" ? "Uploading" : "Upload logo"}
             <input
               type="file"
               className="sr-only"
               accept="image/png,image/jpeg,image/webp"
               disabled={pending}
-              onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                onFile(event.target.files?.[0] ?? null);
+                event.currentTarget.value = "";
+              }}
             />
           </label>
         </Button>

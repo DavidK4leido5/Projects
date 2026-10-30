@@ -1,11 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import {
   Button,
   Checkbox,
@@ -20,7 +16,6 @@ import {
   FormItem,
   FormLabel,
 } from "@repo/ui";
-import { updateTransaction } from "@/features/transactions/actions";
 import type { TransactionRow } from "@/features/transactions/queries";
 import {
   toDateTimeLocal,
@@ -38,6 +33,10 @@ function paymentMethodValue(value: string): TransactionFormValues["paymentMethod
   return match ? match.value : "other";
 }
 
+/**
+ * Pure form. Submitting hands the values to the table, which closes the dialog
+ * and applies the optimistic row itself.
+ */
 export function TransactionEditDialog({
   transaction,
   accounts,
@@ -46,6 +45,7 @@ export function TransactionEditDialog({
   currency,
   open,
   onOpenChange,
+  onSubmit,
 }: {
   transaction: TransactionRow;
   accounts: TransactionAccountOption[];
@@ -54,10 +54,8 @@ export function TransactionEditDialog({
   currency: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmit: (values: TransactionFormValues) => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionEditFormSchema),
     defaultValues: {
@@ -74,35 +72,6 @@ export function TransactionEditDialog({
     },
   });
 
-  function onSubmit(values: TransactionFormValues) {
-    startTransition(async () => {
-      const account = accounts.find((item) => item.id === values.accountId);
-      const result = await updateTransaction({
-        id: transaction.id,
-        type: values.type,
-        amount: values.amount,
-        currency: account?.currency ?? currency,
-        accountId: values.accountId,
-        categoryId: values.type === "transfer" ? null : values.categoryId || null,
-        transferAccountId: values.type === "transfer" ? values.transferAccountId || null : null,
-        date: new Date(values.date),
-        payee: values.payee.trim(),
-        notes: values.notes?.trim() || null,
-        paymentMethod: values.paymentMethod,
-        tagIds: values.tagIds ?? [],
-      });
-
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Transaction updated");
-      onOpenChange(false);
-      router.refresh();
-    });
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
@@ -116,7 +85,7 @@ export function TransactionEditDialog({
         <Form {...form}>
           <form
             id="edit-transaction-form"
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit((values) => onSubmit(values))}
             className="flex flex-col gap-4"
             noValidate
           >
@@ -175,9 +144,8 @@ export function TransactionEditDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" form="edit-transaction-form" disabled={pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : "Save changes"}
+          <Button type="submit" form="edit-transaction-form">
+            Save changes
           </Button>
         </DialogFooter>
       </DialogContent>

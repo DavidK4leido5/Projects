@@ -1,11 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useId, useState, useTransition, type ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import {
   Button,
@@ -31,7 +29,6 @@ import {
   SelectValue,
 } from "@repo/ui";
 import { toDateInput } from "@repo/finance";
-import { addContribution } from "@/features/goals/actions";
 
 type AccountOption = { id: string; name: string };
 
@@ -46,23 +43,28 @@ const formSchema = z.object({
 
 type Values = z.infer<typeof formSchema>;
 
+export type ContributionFormValues = {
+  amount: number;
+  date: Date;
+  accountId: string | null;
+  note: string | null;
+};
+
 export function ContributionDialog({
-  goalId,
   goalName,
   currency,
   accounts,
   trigger,
+  onSave,
 }: {
-  goalId: string;
   goalName: string;
   currency: string;
   accounts: AccountOption[];
   trigger?: ReactNode;
+  onSave: (values: ContributionFormValues) => void;
 }) {
-  const router = useRouter();
   const formId = useId();
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
   const today = toDateInput(new Date());
 
   const form = useForm<Values>({
@@ -70,26 +72,16 @@ export function ContributionDialog({
     defaultValues: { amount: 0, date: today, accountId: "", note: "" },
   });
 
-  function onSubmit(values: Values) {
-    startTransition(async () => {
-      const result = await addContribution({
-        goalId,
-        amount: values.amount,
-        date: new Date(values.date + "T00:00:00"),
-        accountId: values.accountId || null,
-        note: values.note?.trim() || null,
-      });
-
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Added to " + goalName);
-      form.reset({ amount: 0, date: today, accountId: values.accountId, note: "" });
-      setOpen(false);
-      router.refresh();
+  function onSubmit(values: Values): void {
+    onSave({
+      amount: values.amount,
+      date: new Date(values.date + "T00:00:00"),
+      accountId: values.accountId || null,
+      note: values.note?.trim() || null,
     });
+
+    form.reset({ amount: 0, date: today, accountId: values.accountId, note: "" });
+    setOpen(false);
   }
 
   return (
@@ -197,9 +189,8 @@ export function ContributionDialog({
           </form>
         </Form>
         <DialogFooter>
-          <Button type="submit" form={formId} disabled={pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : "Add contribution"}
+          <Button type="submit" form={formId}>
+            Add contribution
           </Button>
         </DialogFooter>
       </DialogContent>

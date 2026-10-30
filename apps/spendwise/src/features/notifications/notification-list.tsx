@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import {
   AlertOctagon,
   AlertTriangle,
@@ -13,7 +12,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, CardContent, EmptyState } from "@repo/ui";
-import { formatDate } from "@repo/finance";
+import { setNotificationUnread } from "@/lib/hooks";
+import { formatNotificationDate } from "@/features/notifications/format";
 import { cn } from "@repo/shared";
 import type { NotificationType } from "@repo/db/schema";
 import { deleteNotification, markAllRead, markRead } from "@/features/notifications/actions";
@@ -27,6 +27,24 @@ const TYPE_ICONS: Record<NotificationType, typeof Info> = {
   system: Info,
 };
 
+type NotificationMutation =
+  | { type: "read"; id: string; readAt: Date }
+  | { type: "readAll"; readAt: Date }
+  | { type: "remove"; id: string };
+
+function reduce(items: NotificationItem[], action: NotificationMutation): NotificationItem[] {
+  switch (action.type) {
+    case "read":
+      return items.map((item) =>
+        item.id === action.id && item.readAt === null ? { ...item, readAt: action.readAt } : item,
+      );
+    case "readAll":
+      return items.map((item) => (item.readAt ? item : { ...item, readAt: action.readAt }));
+    case "remove":
+      return items.filter((item) => item.id !== action.id);
+  }
+}
+
 export function NotificationList({
   initial,
   locale = "en-PH",
@@ -34,47 +52,51 @@ export function NotificationList({
   initial: NotificationItem[];
   locale?: string;
 }) {
-  const router = useRouter();
-  const [items, setItems] = useState(initial);
-  const [pending, startTransition] = useTransition();
+  const [items, apply] = useOptimistic(initial, reduce);
+  const [, startMutation] = useTransition();
   const unread = items.filter((item) => item.readAt === null).length;
 
   function readOne(item: NotificationItem): void {
     if (item.readAt) return;
-    setItems((current) =>
-      current.map((entry) => (entry.id === item.id ? { ...entry, readAt: new Date() } : entry)),
-    );
-    startTransition(async () => {
+    const readAt = new Date();
+
+    startMutation(async () => {
+      apply({ type: "read", id: item.id, readAt });
+      setNotificationUnread(unread - 1);
       const result = await markRead(item.id);
-      if (!result.ok) toast.error(result.error);
-      router.refresh();
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
     });
   }
 
   function readAll(): void {
-    startTransition(async () => {
+    const readAt = new Date();
+
+    startMutation(async () => {
+      apply({ type: "readAll", readAt });
+      setNotificationUnread(0);
       const result = await markAllRead();
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
-      setItems((current) =>
-        current.map((entry) => ({ ...entry, readAt: entry.readAt ?? new Date() })),
-      );
-      router.refresh();
     });
   }
 
   function remove(item: NotificationItem): void {
-    setItems((current) => current.filter((entry) => entry.id !== item.id));
-    startTransition(async () => {
+    const wasUnread = item.readAt === null;
+
+    startMutation(async () => {
+      apply({ type: "remove", id: item.id });
+      if (wasUnread) setNotificationUnread(unread - 1);
       const result = await deleteNotification(item.id);
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
       toast.success("Notification deleted");
-      router.refresh();
     });
   }
 
@@ -94,7 +116,7 @@ export function NotificationList({
         <p className="text-sm text-muted-foreground">
           {unread === 0 ? "All caught up" : unread + " unread"}
         </p>
-        <Button variant="outline" size="sm" onClick={readAll} disabled={pending || unread === 0}>
+        <Button variant="outline" size="sm" onClick={readAll} disabled={unread === 0}>
           <Check className="size-4" aria-hidden />
           Mark all read
         </Button>
@@ -121,7 +143,7 @@ export function NotificationList({
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">{item.body}</p>
                   <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                    {formatDate(item.createdAt, locale, "MMM d, yyyy h:mm a")}
+                    {formatNotificationDate(item.createdAt, locale)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -130,7 +152,6 @@ export function NotificationList({
                       variant="ghost"
                       size="icon"
                       onClick={() => readOne(item)}
-                      disabled={pending}
                       aria-label={"Mark read: " + item.title}
                     >
                       <Check className="size-4" aria-hidden />
@@ -140,7 +161,6 @@ export function NotificationList({
                     variant="ghost"
                     size="icon"
                     onClick={() => remove(item)}
-                    disabled={pending}
                     aria-label={"Delete notification: " + item.title}
                   >
                     <Trash2 className="size-4" aria-hidden />

@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Paperclip, Plus } from "lucide-react";
+import { Paperclip, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
@@ -26,6 +26,12 @@ import {
 } from "@repo/ui";
 import { createTransaction, uploadReceipt } from "@/features/transactions/actions";
 import {
+  publishPendingTransaction,
+  rekeyPendingTransaction,
+  removePendingTransaction,
+} from "@/features/transactions/transaction-create-store";
+import type { TransactionRow } from "@/features/transactions/queries";
+import {
   toDateTimeLocal,
   TransactionFormFields,
   transactionFormSchema,
@@ -47,7 +53,6 @@ export function QuickAddTransaction({
   const router = useRouter();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useOpenFromParam("new");
-  const [pending, startTransition] = useTransition();
   const [receipt, setReceipt] = useState<File | null>(null);
 
   const form = useForm<TransactionFormValues>({
@@ -69,8 +74,61 @@ export function QuickAddTransaction({
   useKeyboardShortcut("n", () => setOpen(true));
 
   function onSubmit(values: TransactionFormValues) {
-    startTransition(async () => {
-      const account = accounts.find((item) => item.id === values.accountId);
+    const account = accounts.find((item) => item.id === values.accountId);
+    const category =
+      values.type === "transfer"
+        ? undefined
+        : categories.find((item) => item.id === values.categoryId);
+    const transfer =
+      values.type === "transfer"
+        ? accounts.find((item) => item.id === values.transferAccountId)
+        : undefined;
+
+    const payee = values.payee.trim();
+    const notes = values.notes?.trim() || null;
+    const date = new Date(values.date);
+    const file = receipt;
+    // Temporary id: the row shows before the server answers, then the real id
+    // takes over so the refreshed server row replaces it instead of duplicating.
+    const tempId = "pending-" + crypto.randomUUID();
+    const optimistic: TransactionRow = {
+      id: tempId,
+      date,
+      type: values.type,
+      amount: values.amount,
+      currency: account?.currency ?? currency,
+      payee,
+      notes,
+      accountId: values.accountId,
+      accountName: account?.name ?? "",
+      categoryId: values.type === "transfer" ? null : values.categoryId || null,
+      categoryName: category?.name ?? null,
+      categoryColor: category?.color ?? null,
+      transferAccountId: values.type === "transfer" ? values.transferAccountId || null : null,
+      transferAccountName: transfer?.name ?? null,
+      paymentMethod: values.paymentMethod,
+      isRecurring: false,
+      tags: [],
+    };
+
+    // Close first: the row is already on its way to the table.
+    setOpen(false);
+    setReceipt(null);
+    form.reset({
+      type: values.type,
+      amount: 0,
+      accountId: values.accountId,
+      categoryId: "",
+      transferAccountId: "",
+      date: toDateTimeLocal(new Date()),
+      payee: "",
+      notes: "",
+      paymentMethod: values.paymentMethod,
+      tagIds: [],
+    });
+    publishPendingTransaction(optimistic);
+
+    void (async () => {
       const result = await createTransaction({
         type: values.type,
         amount: values.amount,
@@ -78,44 +136,33 @@ export function QuickAddTransaction({
         accountId: values.accountId,
         categoryId: values.type === "transfer" ? null : values.categoryId,
         transferAccountId: values.type === "transfer" ? values.transferAccountId : null,
-        date: new Date(values.date),
-        payee: values.payee.trim(),
-        notes: values.notes?.trim() || null,
+        date,
+        payee,
+        notes,
         paymentMethod: values.paymentMethod,
         isRecurring: false,
         tagIds: values.tagIds ?? [],
       });
 
       if (!result.ok) {
+        removePendingTransaction(tempId);
         toast.error(result.error);
         return;
       }
 
-      if (receipt) {
+      rekeyPendingTransaction(tempId, result.data.id);
+
+      if (file) {
         const data = new FormData();
-        data.set("file", receipt);
+        data.set("file", file);
         const uploaded = await uploadReceipt(result.data.id, data);
         if (!uploaded.ok)
           toast.error("Transaction saved, but the receipt failed: " + uploaded.error);
       }
 
       toast.success("Transaction added");
-      form.reset({
-        type: values.type,
-        amount: 0,
-        accountId: values.accountId,
-        categoryId: "",
-        transferAccountId: "",
-        date: toDateTimeLocal(new Date()),
-        payee: "",
-        notes: "",
-        paymentMethod: values.paymentMethod,
-        tagIds: [],
-      });
-      setReceipt(null);
-      setOpen(false);
       router.refresh();
-    });
+    })();
   }
 
   const body = (
@@ -153,9 +200,9 @@ export function QuickAddTransaction({
   );
 
   const submit = (
-    <Button type="submit" form="quick-add-form" disabled={pending || accounts.length === 0}>
-      {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-      {pending ? "Saving" : "Add transaction"}
+    <Button type="submit" form="quick-add-form" disabled={accounts.length === 0}>
+      <Plus className="size-4" aria-hidden />
+      Add transaction
     </Button>
   );
 

@@ -6,11 +6,13 @@ export function AuthShell({
   description,
   children,
   footer,
+  afterFooter,
 }: {
   title: string;
   description: string;
   children: ReactNode;
   footer?: ReactNode;
+  afterFooter?: ReactNode;
 }) {
   return (
     <Card className="shadow-none">
@@ -21,6 +23,7 @@ export function AuthShell({
       <CardContent className="flex flex-col gap-4">
         {children}
         {footer ? <div className="text-sm text-muted-foreground">{footer}</div> : null}
+        {afterFooter}
       </CardContent>
     </Card>
   );

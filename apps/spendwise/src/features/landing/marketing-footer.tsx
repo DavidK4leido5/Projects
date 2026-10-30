@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Brand } from "@/features/landing/brand";
 import { footer, site } from "@/features/landing/content";
 
-export function MarketingFooter() {
-  const year = new Date().getFullYear();
+const COPYRIGHT_YEAR = 2026;
 
+export function MarketingFooter() {
   return (
     <footer className="border-t border-border bg-muted/30">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_2fr]">
@@ -39,7 +39,7 @@ export function MarketingFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
-            © {year} {site.name}. All rights reserved.
+            © {COPYRIGHT_YEAR} {site.name}. All rights reserved.
           </p>
           <p>Email and password only. No bank or payment connections.</p>
         </div>

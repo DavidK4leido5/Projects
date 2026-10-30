@@ -1,9 +1,7 @@
 "use client";
 
-import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 import {
   Button,
   DropdownMenu,
@@ -11,59 +9,40 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@repo/ui";
-import { deleteTransaction, restoreTransaction } from "@/features/transactions/actions";
 import { TransactionEditDialog } from "@/features/transactions/transaction-edit-dialog";
 import type { TransactionRow } from "@/features/transactions/queries";
 import type {
   TransactionAccountOption,
   TransactionCategoryOption,
+  TransactionFormValues,
   TransactionTagOption,
 } from "@/features/transactions/transaction-form";
 
+/**
+ * Menu only. The table owns the mutation so it can apply the optimistic row
+ * before the action answers; this component just reports the intent.
+ */
 export function TransactionRowActions({
   transaction,
   accounts,
   categories,
   tags,
   currency,
+  disabled,
+  onDelete,
+  onUpdate,
 }: {
   transaction: TransactionRow;
   accounts: TransactionAccountOption[];
   categories: TransactionCategoryOption[];
   tags: TransactionTagOption[];
   currency: string;
+  disabled: boolean;
+  onDelete: (transaction: TransactionRow) => void;
+  onUpdate: (transaction: TransactionRow, values: TransactionFormValues) => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
-  const { id, payee } = transaction;
-
-  function remove() {
-    startTransition(async () => {
-      const result = await deleteTransaction(id);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Deleted " + payee, {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            void (async () => {
-              const restored = await restoreTransaction(id);
-              if (!restored.ok) {
-                toast.error(restored.error);
-                return;
-              }
-              router.refresh();
-            })();
-          },
-        },
-      });
-      router.refresh();
-    });
-  }
+  const { payee } = transaction;
 
   return (
     <>
@@ -73,20 +52,16 @@ export function TransactionRowActions({
             variant="ghost"
             size="icon"
             aria-label={"Actions for " + payee}
-            disabled={pending}
+            disabled={disabled}
           >
-            {pending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <MoreHorizontal className="size-4" aria-hidden />
-            )}
+            <MoreHorizontal className="size-4" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem icon={<Pencil />} onSelect={() => setEditOpen(true)}>
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem destructive icon={<Trash2 />} onSelect={remove}>
+          <DropdownMenuItem destructive icon={<Trash2 />} onSelect={() => onDelete(transaction)}>
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -100,6 +75,10 @@ export function TransactionRowActions({
         currency={currency}
         open={editOpen}
         onOpenChange={setEditOpen}
+        onSubmit={(values) => {
+          setEditOpen(false);
+          onUpdate(transaction, values);
+        }}
       />
     </>
   );

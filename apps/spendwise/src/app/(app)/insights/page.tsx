@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -21,6 +22,7 @@ import {
   StatCard,
 } from "@repo/ui";
 import { formatDate, formatMoney } from "@repo/finance";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { getInsightsData } from "@/features/insights/queries";
 import { requireUser } from "@/lib/auth/session";
 import { cn } from "@repo/shared";
@@ -45,7 +47,15 @@ function percent(value: number): string {
   return (value > 0 ? "+" : "") + value + "%";
 }
 
-export default async function InsightsPage() {
+export default function InsightsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <InsightsBody />
+    </Suspense>
+  );
+}
+
+async function InsightsBody() {
   const user = await requireUser();
   const data = await getInsightsData(user.id);
   const { settings } = data;

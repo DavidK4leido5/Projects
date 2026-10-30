@@ -6,7 +6,7 @@ import { toDateInput } from "@repo/finance";
 import { csvEscape } from "@/features/transactions/csv";
 import { PAYMENT_METHODS } from "@/lib/defaults";
 
-export const dynamic = "force-dynamic";
+// Route handlers are dynamic by default; cacheComponents forbids the segment config.
 
 const SORTS: TransactionSort[] = ["date_desc", "date_asc", "amount_desc", "amount_asc"];
 const HEADERS = [

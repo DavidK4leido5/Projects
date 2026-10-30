@@ -3,7 +3,6 @@ import { ImageResponse } from "next/og";
 export const alt = "SpendWise: know where your money goes, and where it's headed.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const runtime = "nodejs";
 
 const sans =
   "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";

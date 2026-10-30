@@ -131,7 +131,7 @@ Use your own email after signing up. The seed replaces that user's SpendWise row
 
 ## Neon setup
 
-The repo root is linked to the `spendwise` Neon project (`.neon`, `neon.ts`). The project declares:
+The repo root is linked to the `spendwise` Neon project in `aws-ap-southeast-1` (Singapore), next to SwiftCart (`.neon`, `neon.ts`). The Vercel project runs its functions in `sin1` as well (`apps/spendwise/vercel.json`), so queries stay in-region. The project declares:
 
 ```ts
 // neon.ts

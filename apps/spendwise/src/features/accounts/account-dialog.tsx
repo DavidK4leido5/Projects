@@ -1,11 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Plus } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 import {
   Button,
@@ -31,8 +29,8 @@ import {
   SelectValue,
 } from "@repo/ui";
 import { CURRENCIES } from "@repo/finance";
-import { createAccount } from "@/features/accounts/actions";
 import { ACCOUNT_TYPE_META, ACCOUNT_TYPES } from "@/features/accounts/account-meta";
+import type { AccountWithBalance } from "@/features/accounts/queries";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Give the account a name").max(80, "Keep it under 80 characters"),
@@ -41,52 +39,60 @@ const schema = z.object({
   currency: z.string().length(3, "Choose a currency"),
 });
 
-type Values = z.infer<typeof schema>;
+export type AccountFormValues = z.infer<typeof schema>;
 
-export function AccountDialog({ currency }: { currency: string }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const form = useForm<Values>({
+export function AccountDialog({
+  currency,
+  account,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+  onSubmit: onAccountSubmit,
+}: {
+  currency: string;
+  account?: AccountWithBalance;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSubmit: (values: AccountFormValues) => void;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const formId = useId();
+
+  function setOpen(next: boolean) {
+    if (!isControlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  }
+
+  const form = useForm<AccountFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", type: "cash", startingBalance: 0, currency },
+    defaultValues: account
+      ? {
+          name: account.name,
+          type: account.type,
+          startingBalance: account.startingBalance,
+          currency: account.currency,
+        }
+      : { name: "", type: "cash", startingBalance: 0, currency },
   });
   const selectedCurrency = useWatch({ control: form.control, name: "currency" });
 
-  function onSubmit(values: Values) {
-    startTransition(async () => {
-      const result = await createAccount({
-        name: values.name,
-        type: values.type,
-        startingBalance: values.startingBalance,
-        currency: values.currency.toUpperCase(),
-        color: "slate",
-        icon: "wallet",
-      });
-
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Account added");
+  function submit(values: AccountFormValues) {
+    setOpen(false);
+    if (!account) {
       form.reset({ name: "", type: values.type, startingBalance: 0, currency: values.currency });
-      setOpen(false);
-      router.refresh();
-    });
+    }
+    onAccountSubmit(values);
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" aria-hidden />
-          Add account
-        </Button>
-      </DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New account</DialogTitle>
+          <DialogTitle>{account ? "Edit account" : "New account"}</DialogTitle>
           <DialogDescription>
             Track cash, a bank account, an e-wallet, or a card. Balances start from what you enter
             here.
@@ -94,8 +100,8 @@ export function AccountDialog({ currency }: { currency: string }) {
         </DialogHeader>
         <Form {...form}>
           <form
-            id="account-form"
-            onSubmit={form.handleSubmit(onSubmit)}
+            id={formId}
+            onSubmit={form.handleSubmit(submit)}
             className="flex flex-col gap-4"
             noValidate
           >
@@ -189,9 +195,9 @@ export function AccountDialog({ currency }: { currency: string }) {
           </form>
         </Form>
         <DialogFooter>
-          <Button type="submit" form="account-form" disabled={pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {pending ? "Saving" : "Create account"}
+          <Button type="submit" form={formId}>
+            {account ? null : <Plus className="size-4" aria-hidden />}
+            {account ? "Save changes" : "Create account"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Download, ShieldCheck } from "lucide-react";
 import {
   Button,
@@ -10,6 +11,7 @@ import {
   PageHeader,
   Separator,
 } from "@repo/ui";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { DeleteAccountForm } from "@/features/settings/delete-account-form";
 import { LogoForm } from "@/features/settings/logo-form";
 import { PasswordForm } from "@/features/settings/password-form";
@@ -20,7 +22,15 @@ import { requireUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function SettingsPage() {
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <SettingsBody />
+    </Suspense>
+  );
+}
+
+async function SettingsBody() {
   const user = await requireUser();
   const settings = await getSettings(user.id);
 

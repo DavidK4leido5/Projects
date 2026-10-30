@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { getAuthUser } from "@/lib/auth/session";
 import { MarketingFooter } from "@/features/landing/marketing-footer";
 import { MarketingNavbar } from "@/features/landing/marketing-navbar";
@@ -31,9 +31,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default async function MarketingLayout({ children }: { children: ReactNode }) {
-  const user = await getAuthUser();
-
+export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <a
@@ -42,11 +40,18 @@ export default async function MarketingLayout({ children }: { children: ReactNod
       >
         Skip to content
       </a>
-      <MarketingNavbar signedIn={Boolean(user)} />
+      <Suspense fallback={<MarketingNavbar signedIn={false} />}>
+        <MarketingNav />
+      </Suspense>
       <main id="main" className="flex-1">
         {children}
       </main>
       <MarketingFooter />
     </div>
   );
+}
+
+async function MarketingNav() {
+  const user = await getAuthUser();
+  return <MarketingNavbar signedIn={Boolean(user)} />;
 }
