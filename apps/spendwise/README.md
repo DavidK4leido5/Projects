@@ -250,14 +250,19 @@ pnpm exec eslint apps/spendwise packages/ui packages/db packages/finance
 
 ## Deploy on Vercel
 
-1. Import the repository, set **Root Directory** to `apps/spendwise`.
+1. The GitHub repository is connected to the Vercel project with **Root Directory**
+   `apps/spendwise`.
 2. Build command: `pnpm --filter @repo/spendwise build`. Install command: `pnpm install`.
-3. Add every variable from the table above to Production and Preview.
+3. Add every variable from the table above to **Production**. Preview deployments are disabled in
+   `vercel.json` until a preview Neon branch is configured.
 4. Point `DATABASE_URL` at the pooled URL, and run migrations from CI or locally against the
    unpooled URL before promoting.
 5. Add the deployment origin to Neon Auth trusted domains:
    `neon neon-auth domain add https://your-app.vercel.app`.
-6. Preview deployments should use a Neon branch (one per PR) so data and receipts stay isolated.
+6. `.github/workflows/ci.yml` runs lint, typecheck, format, unit tests, and the SpendWise build on
+   pushes and pull requests. A push to `master` triggers the Vercel production deployment. To enable
+   previews later, add a Neon preview branch and its own Auth/storage env, then allow the branch in
+   `vercel.json`.
 
 ## Deliberate limits
 
