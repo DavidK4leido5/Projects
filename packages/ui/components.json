@@ -10,9 +10,9 @@
     "cssVariables": true
   },
   "aliases": {
-    "components": "@/components",
+    "components": "@/",
     "utils": "@repo/shared",
-    "ui": "@/components/ui",
+    "ui": "@/",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

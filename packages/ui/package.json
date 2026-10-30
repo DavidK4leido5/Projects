@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hookform/resolvers": "^6.0.2",
     "@radix-ui/react-alert-dialog": "catalog:",
     "@radix-ui/react-checkbox": "catalog:",
     "@radix-ui/react-dialog": "catalog:",
@@ -20,8 +21,18 @@
     "@radix-ui/react-slot": "catalog:",
     "@repo/shared": "workspace:*",
     "class-variance-authority": "catalog:",
+    "cn": "^0.5.0",
+    "date-fns": "^4.4.0",
     "embla-carousel-react": "catalog:",
-    "lucide-react": "catalog:"
+    "lucide-react": "catalog:",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.8.1",
+    "react-day-picker": "^10.0.2",
+    "react-hook-form": "^7.91.0",
+    "recharts": "3.8.0",
+    "sonner": "^2.0.8",
+    "vaul": "^1.1.2",
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
     "react": "^19.0.0",
