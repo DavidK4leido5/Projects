@@ -14,7 +14,6 @@ export const tags = {
   users: "users",
   user: (id: string) => "user:" + id,
   inventory: (storeId: string) => "inventory:" + storeId,
-  trackers: "trackers",
 } as const;
 
 /** Lifetimes, in the vocabulary Next understands. */

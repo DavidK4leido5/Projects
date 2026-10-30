@@ -1,3 +1,6 @@
+> Working on this repo? Read `.agents/skills/swiftcart/SKILL.md` first. It is the architecture map:
+> rendering, cache tags, mutations, pagination, hooks, data model and the known traps.
+
 # Projects
 
 Turborepo monorepo. pnpm workspaces, TypeScript everywhere, shared UI and config packages.
