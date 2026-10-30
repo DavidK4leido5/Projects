@@ -48,6 +48,14 @@ Both Vercel projects (`spendwise` and `swiftcart`) are connected to this GitHub 
 deploy `master` to production. Other branches are disabled in each app's `vercel.json` until
 preview databases and Auth branches exist. Functions for both apps run in `sin1` (Singapore).
 
+## Scheduled reminders
+
+`apps/spendwise/vercel.json` schedules `/api/cron/reminders` daily at 22:00 UTC (06:00 Manila).
+The route is closed unless the request carries `Authorization: Bearer $CRON_SECRET`. It calls
+`syncAllReminders()`, which evaluates recurring bills and budget thresholds for every user with
+settings. The Hobby plan allows one cron run per day; a Pro plan can shorten the schedule without
+changing the route.
+
 ## Adding things
 
 **An app:** create `apps/<name>/package.json` with `build` and `dev` scripts. Turbo finds it, no registration step.

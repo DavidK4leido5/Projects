@@ -8,10 +8,11 @@ import {
   notifications,
   recurringRules,
   transactions,
+  userSettings,
   type NotificationType,
 } from "@repo/db/schema";
 import { formatDate, formatMoney, monthKey, toDateInput } from "@repo/finance";
-import { getDbPool } from "@/lib/db";
+import { getDb, getDbPool } from "@/lib/db";
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDbPool>["transaction"]>[0]>[0];
 
@@ -176,4 +177,19 @@ async function syncBudgetAlerts(tx: Tx, userId: string, now: Date): Promise<void
     .filter((row) => !seen.has(row.title));
 
   if (rows.length > 0) await tx.insert(notifications).values(rows);
+}
+/** Cron entry point: refresh reminders for every user with settings. */
+export async function syncAllReminders(): Promise<{ users: number; failed: number }> {
+  const rows = await getDb().selectDistinct({ userId: userSettings.userId }).from(userSettings);
+  let failed = 0;
+
+  for (const row of rows) {
+    try {
+      await syncReminders(row.userId);
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return { users: rows.length, failed };
 }
