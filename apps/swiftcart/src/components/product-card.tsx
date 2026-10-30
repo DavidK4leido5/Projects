@@ -34,8 +34,10 @@ export function ProductCard({ product }: { product: ProductCardModel }) {
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-1 p-2.5">
-        <h3 className="line-clamp-2 text-[13px] font-medium leading-snug text-neutral-900">
+      {/* Reserved heights keep every card the same size, so the skeleton and
+          the loaded grid occupy identical space. */}
+      <div className="flex min-h-[104px] flex-1 flex-col gap-1 p-2.5 sm:min-h-[140px]">
+        <h3 className="line-clamp-2 min-h-9 text-[13px] font-medium leading-[18px] text-neutral-900">
           <Link
             href={"/products/" + product.slug}
             className="card-link underline-offset-4 after:absolute after:inset-0 focus-visible:outline-none group-hover:underline"
@@ -44,13 +46,13 @@ export function ProductCard({ product }: { product: ProductCardModel }) {
           </Link>
         </h3>
         {product.description ? (
-          <p className="hidden text-[11px] leading-4 text-neutral-600 sm:line-clamp-2">
+          <p className="hidden text-[11px] leading-4 text-neutral-600 sm:line-clamp-2 sm:min-h-8">
             {product.description}
           </p>
         ) : null}
         <Link
           href={"/stores/" + product.storeSlug}
-          className="relative z-10 truncate text-[11px] text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline focus-visible:text-neutral-900 focus-visible:underline focus-visible:outline-none"
+          className="relative z-10 min-h-4 truncate text-[11px] leading-4 text-neutral-500 underline-offset-4 hover:text-neutral-900 hover:underline focus-visible:text-neutral-900 focus-visible:underline focus-visible:outline-none"
         >
           {product.storeName}
         </Link>

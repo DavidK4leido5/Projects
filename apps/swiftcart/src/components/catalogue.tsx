@@ -24,14 +24,12 @@ function ProductGridSkeleton({ count = 12 }: { count?: number }) {
           className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white"
         >
           <Skeleton className="aspect-square w-full rounded-none" />
-          <div className="flex flex-1 flex-col gap-1 p-2.5">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="hidden h-3.5 w-full sm:block" />
-            <Skeleton className="hidden h-3.5 w-2/3 sm:block" />
-            <Skeleton className="h-3.5 w-1/3" />
+          <div className="flex min-h-[104px] flex-1 flex-col gap-1 p-2.5 sm:min-h-[140px]">
+            <Skeleton className="h-9 w-3/4" />
+            <Skeleton className="hidden h-8 w-full sm:block" />
+            <Skeleton className="h-4 w-1/3" />
             <div className="mt-auto flex items-baseline justify-between gap-2 pt-1">
-              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-5 w-16" />
               <Skeleton className="h-2.5 w-8" />
             </div>
           </div>
