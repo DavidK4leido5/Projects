@@ -27,7 +27,14 @@ export async function syncReminders(userId: string): Promise<void> {
   const now = new Date();
 
   await getDbPool().transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
+    // A second request should render the bell immediately, not queue behind
+    // the first one. The winner refreshes reminders; the loser reads what is
+    // already there.
+    const result = await tx.execute(
+      sql`select pg_try_advisory_xact_lock(hashtext(${userId})) as locked`,
+    );
+    if (result.rows[0]?.locked !== true) return;
+
     await syncBillReminders(tx, userId, now);
     await syncBudgetAlerts(tx, userId, now);
   });

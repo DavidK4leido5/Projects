@@ -23,7 +23,7 @@ export function AppHeader({
       <SidebarTrigger className="-ml-1 hidden md:inline-flex" aria-label="Toggle sidebar" />
       <Separator orientation="vertical" className="mr-1 hidden h-4 md:block" />
       <p className="flex-1 truncate text-sm font-medium md:hidden">{titleForPath(pathname)}</p>
-      <div className="flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1">
         {notifications}
         <ThemeToggle />
         <UserMenu name={name} email={email} />
