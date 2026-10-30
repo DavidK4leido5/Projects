@@ -41,6 +41,7 @@ catalog:
   "@radix-ui/react-separator": ^1.1.7
   "class-variance-authority": ^0.7.1
   "lucide-react": ^0.545.0
+  "@tanstack/react-virtual": ^3.13.12
 
 minimumReleaseAgeExclude:
   - "@aws-sdk/checksums@3.1001.7"

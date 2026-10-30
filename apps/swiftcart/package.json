@@ -21,12 +21,13 @@
     "@neondatabase/serverless": "catalog:",
     "@repo/shared": "workspace:*",
     "@repo/ui": "workspace:*",
+    "@tanstack/react-virtual": "catalog:",
     "drizzle-orm": "catalog:",
+    "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "server-only": "catalog:",
-    "lucide-react": "catalog:"
+    "server-only": "catalog:"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "catalog:",
