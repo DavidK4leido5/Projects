@@ -172,7 +172,10 @@ export function useServerSentEvent<T>(
   onEvent: (data: T) => void,
 ): void {
   const latest = useRef(onEvent);
-  latest.current = onEvent;
+
+  useEffect(() => {
+    latest.current = onEvent;
+  }, [onEvent]);
 
   useEffect(() => {
     if (typeof EventSource === "undefined") return;
