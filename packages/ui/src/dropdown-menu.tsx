@@ -84,7 +84,7 @@ function DropdownMenuItem({
       {...props}
     >
       {icon ? <span className="shrink-0">{icon}</span> : null}
-      <span className="truncate">{children}</span>
+      <span className="flex min-w-0 items-center gap-2">{children}</span>
     </DropdownMenuPrimitive.Item>
   );
 }
