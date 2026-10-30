@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect } from "react";
+import { startTransition, useEffect, useRef } from "react";
 import { beginPending, endPending, useNavigationPending } from "@/lib/navigation-pending";
 import {
   CATALOGUE_PATH,
@@ -25,12 +25,23 @@ export function useOptimisticParams(): {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pending = useNavigationPending();
+  // The router may land the new URL with the window back at the top. The user
+  // was reading the list, not asking to go home, so the offset is restored once
+  // the new rows exist.
+  const keptScroll = useRef<number | null>(null);
 
   // Keyed on the URL, not on the values that produced it: the skeleton is up
   // until the router lands, whether the server was fast or never answered.
   useEffect(() => {
     endPending();
     const safety = setTimeout(endPending, SAFETY_TIMEOUT_MS);
+    const restore = keptScroll.current;
+    keptScroll.current = null;
+    if (restore !== null) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: restore, behavior: "auto" });
+      });
+    }
     return () => clearTimeout(safety);
   }, [searchParams]);
 
@@ -42,6 +53,7 @@ export function useOptimisticParams(): {
       return;
     }
 
+    keptScroll.current = window.scrollY;
     beginPending();
     startTransition(() => {
       router[mode](href, { scroll: false });

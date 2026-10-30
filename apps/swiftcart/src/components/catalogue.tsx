@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Button, Skeleton } from "@repo/ui";
 import { CatalogFilters } from "@/components/catalog-filters";
+import { CatalogueGrid } from "@/components/catalogue-grid";
 import { EmptyState } from "@/components/empty-state";
-import { MobileCatalogue } from "@/components/mobile-catalogue";
 import { Pagination } from "@/components/pagination";
 import { ProductCard } from "@/components/product-card";
 import { ResultsRegion } from "@/components/results-region";
@@ -70,9 +70,9 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
   ]);
 
   const filtered = Boolean(q || store || category || inStock || sort !== "new");
-  // What the mobile feed sends back to /api/catalogue; the resolved values, so
-  // its first page and the fetched pages are the same query.
-  const mobileSearch: CatalogueQuery = {
+  // What the grid sends back to /api/catalogue when it appends; the resolved
+  // values, so the first page and the fetched pages are the same query.
+  const gridSearch: CatalogueQuery = {
     q: q || undefined,
     store: store || undefined,
     category: category || undefined,
@@ -155,19 +155,21 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
         <EmptyState description={emptyDescription} />
       ) : (
         <>
-          <div className="hidden sm:block">
-            <ResultsRegion
-              id="catalogue-results"
-              className="mt-6 scroll-mt-24"
-              skeleton={<ProductGridSkeleton count={12} />}
-            >
-              <div className={GRID_CLASS}>
-                {catalog.items.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </ResultsRegion>
+          <ResultsRegion
+            id="catalogue-results"
+            className="mt-6 scroll-mt-24"
+            skeleton={<ProductGridSkeleton count={12} />}
+          >
+            <CatalogueGrid
+              key={JSON.stringify(gridSearch) + ":" + catalog.page}
+              initialItems={catalog.items}
+              initialPage={catalog.page}
+              pages={catalog.pages}
+              search={gridSearch}
+            />
+          </ResultsRegion>
 
+          <div className="hidden sm:block">
             <Pagination
               page={catalog.page}
               pages={catalog.pages}
@@ -175,17 +177,6 @@ export async function Catalogue({ searchParams }: { searchParams: Promise<Catalo
               className="mt-8 border-t border-neutral-200 pt-5"
             />
           </div>
-
-          <ResultsRegion className="mt-6 sm:hidden" skeleton={<ProductGridSkeleton count={12} />}>
-            <MobileCatalogue
-              key={JSON.stringify(mobileSearch)}
-              initialItems={catalog.items}
-              initialPage={catalog.page}
-              pages={catalog.pages}
-              search={mobileSearch}
-              className="sm:hidden"
-            />
-          </ResultsRegion>
         </>
       )}
 

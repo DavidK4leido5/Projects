@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Ellipsis } from "lucide-react";
 import { cn } from "@repo/shared";
 import { beginPending, endPending } from "@/lib/navigation-pending";
@@ -73,18 +73,32 @@ export function Pagination({
   // The clicked page shows as selected immediately. The target is tied to the
   // page it was clicked from, so once the server prop moves the highlight falls
   // back to it without an effect.
-  const [jump, setJump] = useState<{ from: number; to: number } | null>(null);
+  const [jump, setJump] = useState<{ to: number; key: string } | null>(null);
 
   const settled = Math.min(Math.max(page, 1), pages);
-  const current = jump && jump.from === settled ? jump.to : settled;
+  // A click only outranks the URL until the URL changes. Keying it on the query
+  // string makes a filter reset drop the highlight even when the page number
+  // happens to match the page the click came from.
+  const key = searchParams.toString();
+  const current = jump && jump.key === key ? jump.to : settled;
 
   // The URL is the source of truth: when it reflects the new page the skeleton
   // goes, whether or not anything else reported the navigation as finished.
+  const lastPage = useRef(page);
   useEffect(() => {
     endPending();
     const safety = setTimeout(endPending, SAFETY_TIMEOUT_MS);
+    // The router can land a searchParams change with the window back at the top;
+    // re-anchor after the new rows exist, not during the click.
+    const moved = lastPage.current !== page;
+    lastPage.current = page;
+    if (moved && scrollTargetId) {
+      requestAnimationFrame(() => {
+        document.getElementById(scrollTargetId)?.scrollIntoView({ block: "start" });
+      });
+    }
     return () => clearTimeout(safety);
-  }, [page, pages]);
+  }, [page, pages, scrollTargetId]);
 
   if (pages <= 1) return null;
 
@@ -110,7 +124,7 @@ export function Pagination({
 
     event.preventDefault();
     const clicked = Number(new URL(href, "http://localhost").searchParams.get(paramName));
-    if (Number.isFinite(clicked)) setJump({ from: settled, to: clicked });
+    if (Number.isFinite(clicked)) setJump({ to: clicked, key });
     beginPending();
     startTransition(() => {
       router.push(href, { scroll: false });

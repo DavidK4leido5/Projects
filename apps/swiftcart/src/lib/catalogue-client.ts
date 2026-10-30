@@ -1,8 +1,9 @@
 import type { ProductCardModel } from "@/features/catalog/queries";
 
 /**
- * The catalogue state the mobile feed carries in its URL. It is exactly what
- * the server component resolved, so the API and the first page agree.
+ * The catalogue state the grid sends to /api/catalogue when it appends. It is
+ * exactly what the server component resolved, so the API and the first page
+ * agree.
  */
 export type CatalogueQuery = {
   q?: string;
