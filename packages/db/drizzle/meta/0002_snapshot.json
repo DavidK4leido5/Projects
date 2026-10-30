@@ -231,14 +231,10 @@
         "attachments_transaction_id_transactions_id_fk": {
           "name": "attachments_transaction_id_transactions_id_fk",
           "tableFrom": "attachments",
-          "columnsFrom": [
-            "transaction_id"
-          ],
+          "columnsFrom": ["transaction_id"],
           "tableTo": "transactions",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -390,14 +386,10 @@
         "budgets_category_id_categories_id_fk": {
           "name": "budgets_category_id_categories_id_fk",
           "tableFrom": "budgets",
-          "columnsFrom": [
-            "category_id"
-          ],
+          "columnsFrom": ["category_id"],
           "tableTo": "categories",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -568,14 +560,10 @@
         "categories_parent_id_categories_id_fk": {
           "name": "categories_parent_id_categories_id_fk",
           "tableFrom": "categories",
-          "columnsFrom": [
-            "parent_id"
-          ],
+          "columnsFrom": ["parent_id"],
           "tableTo": "categories",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -696,28 +684,20 @@
         "goal_contributions_goal_id_goals_id_fk": {
           "name": "goal_contributions_goal_id_goals_id_fk",
           "tableFrom": "goal_contributions",
-          "columnsFrom": [
-            "goal_id"
-          ],
+          "columnsFrom": ["goal_id"],
           "tableTo": "goals",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "goal_contributions_account_id_accounts_id_fk": {
           "name": "goal_contributions_account_id_accounts_id_fk",
           "tableFrom": "goal_contributions",
-          "columnsFrom": [
-            "account_id"
-          ],
+          "columnsFrom": ["account_id"],
           "tableTo": "accounts",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -844,14 +824,10 @@
         "goals_linked_account_id_accounts_id_fk": {
           "name": "goals_linked_account_id_accounts_id_fk",
           "tableFrom": "goals",
-          "columnsFrom": [
-            "linked_account_id"
-          ],
+          "columnsFrom": ["linked_account_id"],
           "tableTo": "accounts",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -1164,28 +1140,20 @@
         "recurring_rules_account_id_accounts_id_fk": {
           "name": "recurring_rules_account_id_accounts_id_fk",
           "tableFrom": "recurring_rules",
-          "columnsFrom": [
-            "account_id"
-          ],
+          "columnsFrom": ["account_id"],
           "tableTo": "accounts",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "recurring_rules_category_id_categories_id_fk": {
           "name": "recurring_rules_category_id_categories_id_fk",
           "tableFrom": "recurring_rules",
-          "columnsFrom": [
-            "category_id"
-          ],
+          "columnsFrom": ["category_id"],
           "tableTo": "categories",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -1398,28 +1366,20 @@
         "transaction_tags_transaction_id_transactions_id_fk": {
           "name": "transaction_tags_transaction_id_transactions_id_fk",
           "tableFrom": "transaction_tags",
-          "columnsFrom": [
-            "transaction_id"
-          ],
+          "columnsFrom": ["transaction_id"],
           "tableTo": "transactions",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "transaction_tags_tag_id_tags_id_fk": {
           "name": "transaction_tags_tag_id_tags_id_fk",
           "tableFrom": "transaction_tags",
-          "columnsFrom": [
-            "tag_id"
-          ],
+          "columnsFrom": ["tag_id"],
           "tableTo": "tags",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1427,10 +1387,7 @@
       "compositePrimaryKeys": {
         "transaction_tags_pk": {
           "name": "transaction_tags_pk",
-          "columns": [
-            "transaction_id",
-            "tag_id"
-          ]
+          "columns": ["transaction_id", "tag_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1676,56 +1633,40 @@
         "transactions_account_id_accounts_id_fk": {
           "name": "transactions_account_id_accounts_id_fk",
           "tableFrom": "transactions",
-          "columnsFrom": [
-            "account_id"
-          ],
+          "columnsFrom": ["account_id"],
           "tableTo": "accounts",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         },
         "transactions_category_id_categories_id_fk": {
           "name": "transactions_category_id_categories_id_fk",
           "tableFrom": "transactions",
-          "columnsFrom": [
-            "category_id"
-          ],
+          "columnsFrom": ["category_id"],
           "tableTo": "categories",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         },
         "transactions_transfer_account_id_accounts_id_fk": {
           "name": "transactions_transfer_account_id_accounts_id_fk",
           "tableFrom": "transactions",
-          "columnsFrom": [
-            "transfer_account_id"
-          ],
+          "columnsFrom": ["transfer_account_id"],
           "tableTo": "accounts",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         },
         "transactions_recurring_rule_id_recurring_rules_id_fk": {
           "name": "transactions_recurring_rule_id_recurring_rules_id_fk",
           "tableFrom": "transactions",
-          "columnsFrom": [
-            "recurring_rule_id"
-          ],
+          "columnsFrom": ["recurring_rule_id"],
           "tableTo": "recurring_rules",
           "schemaTo": "spendwise",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -1832,65 +1773,32 @@
     "spendwise.account_type": {
       "name": "account_type",
       "schema": "spendwise",
-      "values": [
-        "cash",
-        "bank",
-        "ewallet",
-        "credit_card",
-        "savings",
-        "investment"
-      ]
+      "values": ["cash", "bank", "ewallet", "credit_card", "savings", "investment"]
     },
     "spendwise.category_kind": {
       "name": "category_kind",
       "schema": "spendwise",
-      "values": [
-        "income",
-        "expense"
-      ]
+      "values": ["income", "expense"]
     },
     "spendwise.goal_status": {
       "name": "goal_status",
       "schema": "spendwise",
-      "values": [
-        "active",
-        "completed",
-        "archived"
-      ]
+      "values": ["active", "completed", "archived"]
     },
     "spendwise.notification_type": {
       "name": "notification_type",
       "schema": "spendwise",
-      "values": [
-        "budget_alert",
-        "bill_due",
-        "bill_overdue",
-        "goal_milestone",
-        "system"
-      ]
+      "values": ["budget_alert", "bill_due", "bill_overdue", "goal_milestone", "system"]
     },
     "spendwise.payment_method": {
       "name": "payment_method",
       "schema": "spendwise",
-      "values": [
-        "cash",
-        "debit_card",
-        "credit_card",
-        "bank_transfer",
-        "ewallet",
-        "other"
-      ]
+      "values": ["cash", "debit_card", "credit_card", "bank_transfer", "ewallet", "other"]
     },
     "spendwise.recurring_frequency": {
       "name": "recurring_frequency",
       "schema": "spendwise",
-      "values": [
-        "daily",
-        "weekly",
-        "monthly",
-        "yearly",
-        "custom"
-      ]
+      "values": ["daily", "weekly", "monthly", "yearly", "custom"]
     },
     "spendwise.report_type": {
       "name": "report_type",
@@ -1907,20 +1815,12 @@
     "spendwise.theme": {
       "name": "theme",
       "schema": "spendwise",
-      "values": [
-        "light",
-        "dark",
-        "system"
-      ]
+      "values": ["light", "dark", "system"]
     },
     "spendwise.transaction_type": {
       "name": "transaction_type",
       "schema": "spendwise",
-      "values": [
-        "income",
-        "expense",
-        "transfer"
-      ]
+      "values": ["income", "expense", "transfer"]
     }
   },
   "schemas": {
