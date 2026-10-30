@@ -37,6 +37,17 @@ Targeted runs: `pnpm --filter @repo/swiftcart dev`, `pnpm --filter @repo/spendwi
 SpendWise setup, Neon provisioning, migrations, seed, and Vercel deployment:
 [apps/spendwise/README.md](apps/spendwise/README.md).
 
+## CI/CD
+
+`.github/workflows/ci.yml` runs on pushes to `master`, pull requests, and manual dispatch:
+lint, typecheck, format check, SpendWise unit tests, then builds for both SpendWise and SwiftCart.
+SwiftCart's build reads its isolated Neon `ci` branch through the `SWIFTCART_DATABASE_URL`
+repository secret; SpendWise builds from placeholders because its PPR shells do not query Postgres.
+
+Both Vercel projects (`spendwise` and `swiftcart`) are connected to this GitHub repository and
+deploy `master` to production. Other branches are disabled in each app's `vercel.json` until
+preview databases and Auth branches exist. Functions for both apps run in `sin1` (Singapore).
+
 ## Adding things
 
 **An app:** create `apps/<name>/package.json` with `build` and `dev` scripts. Turbo finds it, no registration step.

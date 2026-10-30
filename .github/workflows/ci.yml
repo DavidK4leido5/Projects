@@ -15,20 +15,21 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify SpendWise
+    name: Verify SpendWise and SwiftCart
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       TURBO_TELEMETRY_DISABLED: "1"
-      # Build-time placeholders only. No database or storage is contacted
-      # while prerendering the PPR shells.
+      # SpendWise build-time placeholders. Its PPR shells do not query the
+      # database, so no production credentials are needed.
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/spendwise
       NEON_AUTH_BASE_URL: http://127.0.0.1:3001/api/auth
       NEON_AUTH_JWKS_URL: http://127.0.0.1:3001/api/auth/jwks
       NEON_AUTH_COOKIE_SECRET: ci-only-cookie-secret-at-least-32-chars
       NEXT_PUBLIC_APP_NAME: SpendWise
       NEXT_PUBLIC_APP_URL: http://localhost:3001
+      NEON_AUTH_TRUSTED_ORIGIN: http://localhost:3000
       AWS_ACCESS_KEY_ID: ci
       AWS_SECRET_ACCESS_KEY: ci
       AWS_ENDPOINT_URL_S3: http://127.0.0.1:9000
@@ -38,6 +39,9 @@ jobs:
       CLOUDINARY_API_KEY: ci
       CLOUDINARY_API_SECRET: ci
       NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ci
+      # SwiftCart statically renders product pages from Postgres. This secret
+      # points at its isolated Neon ci branch, not production.
+      SWIFTCART_DATABASE_URL: ${{ secrets.SWIFTCART_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,5 +73,11 @@ jobs:
       - name: Unit tests
         run: pnpm --filter @repo/spendwise test
 
-      - name: Build
+      - name: Build SpendWise
         run: pnpm --filter @repo/spendwise build
+
+      - name: Build SwiftCart
+        if: env.SWIFTCART_DATABASE_URL != ''
+        env:
+          DATABASE_URL: ${{ secrets.SWIFTCART_DATABASE_URL }}
+        run: pnpm --filter @repo/swiftcart build
