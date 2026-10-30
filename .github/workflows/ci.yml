@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify SpendWise
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      TURBO_TELEMETRY_DISABLED: "1"
+      # Build-time placeholders only. No database or storage is contacted
+      # while prerendering the PPR shells.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/spendwise
+      NEON_AUTH_BASE_URL: http://127.0.0.1:3001/api/auth
+      NEON_AUTH_JWKS_URL: http://127.0.0.1:3001/api/auth/jwks
+      NEON_AUTH_COOKIE_SECRET: ci-only-cookie-secret-at-least-32-chars
+      NEXT_PUBLIC_APP_NAME: SpendWise
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      AWS_ACCESS_KEY_ID: ci
+      AWS_SECRET_ACCESS_KEY: ci
+      AWS_ENDPOINT_URL_S3: http://127.0.0.1:9000
+      AWS_REGION: ap-southeast-1
+      OBJECT_STORAGE_BUCKET: assets
+      CLOUDINARY_CLOUD_NAME: ci
+      CLOUDINARY_API_KEY: ci
+      CLOUDINARY_API_SECRET: ci
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Unit tests
+        run: pnpm --filter @repo/spendwise test
+
+      - name: Build
+        run: pnpm --filter @repo/spendwise build
