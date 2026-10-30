@@ -15,6 +15,13 @@
       "when": 1793341555514,
       "tag": "0001_free_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793359901961,
+      "tag": "0002_notification_events",
+      "breakpoints": true
     }
   ]
 }

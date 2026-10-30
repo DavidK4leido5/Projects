@@ -6,10 +6,15 @@ import { Bell, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@repo/ui";
 import { formatNotificationDate } from "@/features/notifications/format";
+import {
+  incrementNotificationUnread,
+  setNotificationUnread,
+  useNotificationUnread,
+  useServerSentEvent,
+} from "@/lib/hooks";
 import { cn } from "@repo/shared";
 import { markAllRead, markRead } from "@/features/notifications/actions";
 import type { NotificationItem } from "@/features/notifications/queries";
-import { setNotificationUnread, useNotificationUnread } from "@/lib/hooks";
 
 /**
  * Bell + unread badge. Renders from server-supplied data, then keeps its own
@@ -28,6 +33,19 @@ export function NotificationBell({
   const unread = useNotificationUnread(initialUnreadCount);
   const [items, setItems] = useState(recent);
   const [pending, startTransition] = useTransition();
+
+  useServerSentEvent<NotificationItem>("/api/notifications/stream", "notification", (item) => {
+    const incoming: NotificationItem = {
+      ...item,
+      createdAt: new Date(item.createdAt),
+      readAt: item.readAt ? new Date(item.readAt) : null,
+    };
+    setItems((current) => {
+      if (current.some((entry) => entry.id === incoming.id)) return current;
+      return [incoming, ...current].slice(0, 5);
+    });
+    if (incoming.readAt === null) incrementNotificationUnread();
+  });
 
   function readOne(item: NotificationItem): void {
     setOpen(false);

@@ -142,6 +142,11 @@ export function setNotificationUnread(count: number): void {
   for (const listener of unreadListeners) listener();
 }
 
+export function incrementNotificationUnread(): void {
+  if (unreadCount === null) return;
+  setNotificationUnread(unreadCount + 1);
+}
+
 export function useNotificationUnread(initial: number): number {
   const value = useSyncExternalStore(
     (listener) => {
@@ -159,4 +164,30 @@ export function useNotificationUnread(initial: number): number {
   }, [initial]);
 
   return value;
+}
+/** Subscribes to one named SSE event and keeps the latest handler. */
+export function useServerSentEvent<T>(
+  url: string,
+  eventName: string,
+  onEvent: (data: T) => void,
+): void {
+  const latest = useRef(onEvent);
+  latest.current = onEvent;
+
+  useEffect(() => {
+    if (typeof EventSource === "undefined") return;
+    const source = new EventSource(url);
+    const handler = (event: MessageEvent) => {
+      try {
+        latest.current(JSON.parse(event.data) as T);
+      } catch {
+        // ignore malformed frames
+      }
+    };
+    source.addEventListener(eventName, handler);
+    return () => {
+      source.removeEventListener(eventName, handler);
+      source.close();
+    };
+  }, [url, eventName]);
 }

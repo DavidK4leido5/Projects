@@ -56,6 +56,17 @@ The route is closed unless the request carries `Authorization: Bearer $CRON_SECR
 settings. The Hobby plan allows one cron run per day; a Pro plan can shorten the schedule without
 changing the route.
 
+## Realtime notifications
+
+An insert trigger on `spendwise.notifications` calls `pg_notify` on the
+`spendwise_notifications` channel. `/api/notifications/stream` keeps a direct Postgres
+connection open with `LISTEN`, filters payloads to the signed-in user, and streams matching rows to
+the bell over SSE. This requires `DATABASE_URL_UNPOOLED`, because a pooled PgBouncer connection
+cannot hold a session-level `LISTEN`.
+
+Vercel ends the stream at `maxDuration = 60`; `EventSource` reconnects automatically. Cron writes
+work even when no tab is open, and an open tab receives the row through the trigger.
+
 ## Adding things
 
 **An app:** create `apps/<name>/package.json` with `build` and `dev` scripts. Turbo finds it, no registration step.
