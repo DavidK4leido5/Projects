@@ -16,30 +16,95 @@ export type HeroSlide = {
 const INTERVAL_MS = 5500;
 /** A drag has to travel this far before it counts as a slide change. */
 const DRAG_MIN_PX = 10;
+const TRANSITION = "transform 520ms cubic-bezier(0.22, 0.61, 0.36, 1)";
 
+type TrackSlide = { key: string; slide: HeroSlide };
+
+/**
+ * The carousel is a track: slides sit side by side and the track translates, so
+ * a change is a real slide rather than a crossfade. A clone of the last slide
+ * before the first, and of the first after the last, let it wrap without
+ * rewinding across the whole set.
+ */
 export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const count = slides.length;
+  const loop = count > 1;
 
-  const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
-
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  const frameRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{
-    id: number;
-    x: number;
-    y: number;
-    axis: "none" | "x" | "y";
-  } | null>(null);
-  const suppressClick = useRef(false);
+  // Position in track space: 1..count are the real slides, 0 and count+1 the
+  // clones. The visible index is derived, never stored separately.
+  const [position, setPosition] = useState(loop ? 1 : 0);
+  const [animate, setAnimate] = useState(true);
+  const [paused, setPaused] = useState(false);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
 
+  const frameRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ id: number; x: number; y: number; axis: "none" | "x" | "y" } | null>(null);
+  const suppressClick = useRef(false);
+
+  const index = loop ? (((position - 1) % count) + count) % count : 0;
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+  // loop implies at least two slides, so both ends exist.
+  const track: TrackSlide[] = loop
+    ? [
+        { key: slides[count - 1]!.id + "-clone-end", slide: slides[count - 1]! },
+        ...slides.map((slide) => ({ key: slide.id, slide })),
+        { key: slides[0]!.id + "-clone-start", slide: slides[0]! },
+      ]
+    : slides.map((slide) => ({ key: slide.id, slide }));
+
+  /** Moves by one slide, wrapping through the clones. */
+  const step = useCallback(
+    (direction: 1 | -1) => {
+      if (!loop) return;
+      setAnimate(!reducedMotion);
+      setOffset(0);
+      setPosition((current) => current + direction);
+    },
+    [loop, reducedMotion],
+  );
+
+  const goTo = useCallback(
+    (next: number) => {
+      if (!loop) return;
+      setAnimate(!reducedMotion);
+      setOffset(0);
+      setPosition(next + 1);
+    },
+    [loop, reducedMotion],
+  );
+
+  // Once the track lands on a clone, swap to the real slide without animating.
+  function onTransitionEnd(event: React.TransitionEvent<HTMLDivElement>) {
+    if (event.propertyName !== "transform" || !loop) return;
+    if (position === 0) {
+      setAnimate(false);
+      setPosition(count);
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimate(true)));
+    } else if (position === count + 1) {
+      setAnimate(false);
+      setPosition(1);
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimate(true)));
+    }
+  }
+
+  useInterval(() => step(1), loop && !paused && !reducedMotion && !dragging ? INTERVAL_MS : null);
+
+  useEventListener(
+    () => window,
+    "keydown",
+    (event) => {
+      const key = (event as KeyboardEvent).key;
+      if (key === "ArrowRight") step(1);
+      if (key === "ArrowLeft") step(-1);
+    },
+    { enabled: loop },
+  );
+
   function onPointerDown(event: React.PointerEvent<HTMLElement>) {
-    if (count < 2) return;
+    if (!loop) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    // Dots and arrows keep their own click behaviour.
     if ((event.target as HTMLElement).closest("button")) return;
     drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, axis: "none" };
   }
@@ -55,6 +120,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
       state.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
       if (state.axis === "x") {
         event.currentTarget.setPointerCapture(event.pointerId);
+        setAnimate(false);
         setDragging(true);
         setPaused(true);
       }
@@ -75,13 +141,21 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
     const width = frameRef.current?.offsetWidth ?? 0;
     const threshold = Math.min(Math.max(width * 0.12, 40), 120);
     setDragging(false);
-    setOffset(0);
     setPaused(false);
     suppressClick.current = Math.abs(dx) >= DRAG_MIN_PX;
     window.setTimeout(() => {
       suppressClick.current = false;
     }, 400);
-    if (Math.abs(dx) >= threshold) go(index + (dx < 0 ? 1 : -1));
+
+    if (Math.abs(dx) >= threshold) {
+      setAnimate(!reducedMotion);
+      setOffset(0);
+      setPosition((current) => current + (dx < 0 ? 1 : -1));
+    } else {
+      // Not far enough: spring back to the current slide.
+      setAnimate(!reducedMotion);
+      setOffset(0);
+    }
   }
 
   // A drag that ends on a slide must not follow that slide's link.
@@ -91,22 +165,6 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
     event.preventDefault();
     event.stopPropagation();
   }
-
-  useInterval(
-    () => setIndex((current) => (current + 1) % count),
-    count > 1 && !paused && !reducedMotion ? INTERVAL_MS : null,
-  );
-
-  useEventListener(
-    () => window,
-    "keydown",
-    (event) => {
-      const key = (event as KeyboardEvent).key;
-      if (key === "ArrowRight") setIndex((current) => (current + 1) % count);
-      if (key === "ArrowLeft") setIndex((current) => (current - 1 + count) % count);
-    },
-    { enabled: count > 1 },
-  );
 
   return (
     <section
@@ -137,32 +195,38 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
         }
       >
         <div
-          className={
-            "absolute inset-0 " + (dragging ? "" : "transition-transform duration-300 ease-out")
-          }
-          style={offset === 0 ? undefined : { transform: "translate3d(" + offset + "px,0,0)" }}
+          className="flex h-full w-full"
+          style={{
+            transform: "translate3d(calc(" + -position * 100 + "% + " + offset + "px), 0, 0)",
+            transition: animate ? TRANSITION : "none",
+          }}
+          onTransitionEnd={onTransitionEnd}
         >
-          {slides.map((slide, slideIndex) => {
-            const active = slideIndex === index;
+          {track.map((entry, trackIndex) => {
+            const active = trackIndex === position;
             return (
               <Link
-                key={slide.id}
-                href={"/products/" + slide.slug}
+                key={entry.key}
+                href={"/products/" + entry.slide.slug}
                 aria-hidden={!active}
+                aria-label={entry.slide.name}
                 tabIndex={active ? 0 : -1}
-                className={
-                  "absolute inset-0 block transition-opacity duration-700 ease-out " +
-                  (active ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
-                }
+                draggable={false}
+                className="relative h-full w-full shrink-0"
               >
                 <picture>
-                  <source media="(min-width: 640px)" srcSet={slide.wideSrcSet} sizes="100vw" />
-                  <img
-                    src={slide.tallSrc}
-                    srcSet={slide.tallSrcSet}
+                  <source
+                    media="(min-width: 640px)"
+                    srcSet={entry.slide.wideSrcSet}
                     sizes="100vw"
-                    alt={slide.name}
+                  />
+                  <img
+                    src={entry.slide.tallSrc}
+                    srcSet={entry.slide.tallSrcSet}
+                    sizes="100vw"
+                    alt={entry.slide.name}
                     fetchPriority={active ? "high" : "low"}
+                    draggable={false}
                     className="absolute inset-0 h-full w-full object-cover object-center"
                   />
                 </picture>
@@ -171,13 +235,13 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
           })}
         </div>
 
-        {count > 1 ? (
+        {loop ? (
           <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-2">
             {slides.map((slide, slideIndex) => (
               <button
                 key={slide.id}
                 type="button"
-                onClick={() => go(slideIndex)}
+                onClick={() => goTo(slideIndex)}
                 aria-label={"Show " + slide.name}
                 aria-current={slideIndex === index}
                 className={
@@ -190,11 +254,11 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
         ) : null}
       </div>
 
-      {count > 1 ? (
+      {loop ? (
         <>
           <button
             type="button"
-            onClick={() => go(index - 1)}
+            onClick={() => step(-1)}
             aria-label="Previous featured product"
             className="absolute left-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-900/60 text-white backdrop-blur transition-colors hover:bg-neutral-800 lg:flex"
           >
@@ -211,7 +275,7 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
 
           <button
             type="button"
-            onClick={() => go(index + 1)}
+            onClick={() => step(1)}
             aria-label="Next featured product"
             className="absolute right-4 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-neutral-900/60 text-white backdrop-blur transition-colors hover:bg-neutral-800 lg:flex"
           >
