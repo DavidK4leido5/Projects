@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { formatMoney } from "@repo/shared";
 import { Button, Card, CardTitle } from "@repo/ui";
 
@@ -49,16 +49,15 @@ export function OrderSuccess({ order }: { order: PlacedOrder }) {
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const receipt = "/orders/" + order.token;
 
-  useEffect(() => {
-    if (copied !== "copied") return;
-    const timer = setTimeout(() => setCopied("idle"), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
+  const reset = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function copyReceipt() {
+    if (reset.current !== null) clearTimeout(reset.current);
     try {
       await navigator.clipboard.writeText(window.location.origin + receipt);
       setCopied("copied");
+      // The label is feedback for this click, so the timer belongs to the handler.
+      reset.current = setTimeout(() => setCopied("idle"), 2000);
     } catch {
       setCopied("failed");
     }

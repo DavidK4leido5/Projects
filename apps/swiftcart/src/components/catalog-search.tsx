@@ -16,6 +16,8 @@ const INPUT_CLASS = {
 
 /** Runs `onSettle` once typing pauses; `cancel` drops a pending run. */
 function useDebounced(onSettle: (value: string) => void, delay: number) {
+  // The timer lives in a ref, so the callback it fires is read at fire time.
+  // useEffectEvent cannot be used here: it may only be called from an effect.
   const latest = useRef(onSettle);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

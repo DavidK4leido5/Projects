@@ -28,6 +28,8 @@ export function useDebouncedSearch({
   const [input, setInputState] = useState(value);
   const [pending, setPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Same reason as the header search: the debounce fires from a timer, where
+  // an Effect Event is not allowed, so the latest callback lives in a ref.
   const callback = useRef(onSearch);
   const typing = useRef(false);
 

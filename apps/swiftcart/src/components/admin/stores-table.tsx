@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useOptimistic, useState, useTransition, useActionState } from "react";
+import { Fragment, useOptimistic, useState, useTransition, useActionState } from "react";
 import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import {
@@ -32,11 +32,16 @@ type StoreStats = { orders: number; openSlices: number };
 const initialState: AdminFormState = {};
 
 function RenameRow({ store, onDone }: { store: StoreRow; onDone: () => void }) {
-  const [state, formAction, pending] = useActionState(renameStore, initialState);
-
-  useEffect(() => {
-    if (state.ok) onDone();
-  }, [state.ok, onDone]);
+  // The rename reports success to its parent from the action itself, so the
+  // "close the editor" step never needs an effect watching state.
+  const [state, formAction, pending] = useActionState(
+    async (previous: AdminFormState, formData: FormData) => {
+      const next = await renameStore(previous, formData);
+      if (next.ok) onDone();
+      return next;
+    },
+    initialState,
+  );
 
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-2">

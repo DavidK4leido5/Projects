@@ -2,6 +2,7 @@
 
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { ProductCard } from "@/components/product-card";
 import type { ProductCardModel } from "@/features/catalog/queries";
 import type { CataloguePage, CatalogueQuery } from "@/lib/catalogue-client";
@@ -13,10 +14,12 @@ import type { CataloguePage, CatalogueQuery } from "@/lib/catalogue-client";
  */
 const INITIAL_VIEWPORT = { width: 390, height: 844 };
 const ROW_ESTIMATE = 300;
-/** Below sm the grid appends pages; above it the page's pager owns paging. */
-const MOBILE_QUERY = "(max-width: 639px)";
-/** Two columns are the base; each matching query adds one. */
-const COLUMN_QUERIES = ["(min-width: 640px)", "(min-width: 1024px)", "(min-width: 1280px)"];
+/** Two columns are the base; each matching breakpoint adds one. */
+const COLUMN_BREAKPOINTS = [
+  "(min-width: 640px)",
+  "(min-width: 1024px)",
+  "(min-width: 1280px)",
+] as const;
 
 type CatalogueGridProps = {
   initialItems: ProductCardModel[];
@@ -41,9 +44,10 @@ function pageHref(search: CatalogueQuery, page: number): string {
  * breakpoint has columns, and only the rows near the viewport are mounted.
  */
 export function CatalogueGrid({ initialItems, initialPage, pages, search }: CatalogueGridProps) {
-  // Two columns is the narrow default, so the server render and the hydrating
-  // client agree; the media effect replaces it with the real count.
-  const [columns, setColumns] = useState(2);
+  const sm = useMediaQuery(COLUMN_BREAKPOINTS[0]);
+  const md = useMediaQuery(COLUMN_BREAKPOINTS[1]);
+  const xl = useMediaQuery(COLUMN_BREAKPOINTS[2]);
+  const columns = 2 + Number(sm) + Number(md) + Number(xl);
   const [items, setItems] = useState(initialItems);
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
@@ -52,28 +56,14 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
   const [scrollMargin, setScrollMargin] = useState<number | null>(null);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
   const pageRef = useRef(initialPage);
 
   // Above sm the pager owns paging, so the grid shows exactly the cards the
   // server sent for the current page and never grows.
-  const mobile = columns === 2;
+  const mobile = !sm;
   const visibleItems = mobile ? items : initialItems;
   const rowCount = Math.ceil(visibleItems.length / columns);
-
-  useEffect(() => {
-    const queries = COLUMN_QUERIES.map((query) => window.matchMedia(query));
-    const update = () => {
-      const next = queries.reduce((count, query) => (query.matches ? count + 1 : count), 2);
-      setColumns((current) => (current === next ? current : next));
-    };
-    update();
-    for (const query of queries) query.addEventListener("change", update);
-    return () => {
-      for (const query of queries) query.removeEventListener("change", update);
-    };
-  }, []);
 
   useEffect(() => {
     const update = () => {
@@ -103,7 +93,7 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
   const loadMore = useCallback(async () => {
     const target = pageRef.current + 1;
     if (busyRef.current || pageRef.current >= pages) return;
-    if (typeof window === "undefined" || !window.matchMedia(MOBILE_QUERY).matches) return;
+    if (!mobile) return;
 
     busyRef.current = true;
     setLoading(true);
@@ -123,7 +113,7 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
       busyRef.current = false;
       setLoading(false);
     }
-  }, [pages, search]);
+  }, [mobile, pages, search]);
 
   // The last virtual row is a second trigger for when the sentinel is skipped
   // by a fast scroll; both funnel through the same in-flight guard. Overscan is
@@ -139,20 +129,6 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
       void loadMore();
     });
   }, [mobile, lastRow, rowCount, scrollMargin, loadMore]);
-
-  useEffect(() => {
-    if (!mobile) return;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) void loadMore();
-      },
-      { rootMargin: "200px 0px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [mobile, loadMore]);
 
   return (
     <div ref={wrapperRef} aria-busy={loading}>
@@ -178,8 +154,6 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
           );
         })}
       </div>
-
-      <div ref={sentinelRef} aria-hidden="true" />
 
       {mobile && loading ? (
         <p role="status" className="mt-3 text-center text-xs text-neutral-500">
