@@ -1,16 +1,15 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useRef } from "react";
-import { beginPending, endPending, useNavigationPending } from "@/lib/navigation-pending";
+import { startTransition, useRef } from "react";
+import { useSettlePending, useUrlCommit } from "@/lib/hooks";
+import { beginPending, useNavigationPending } from "@/lib/navigation-pending";
 import {
   CATALOGUE_PATH,
   catalogueHref,
   readCatalogueParams,
   type CatalogueParams,
 } from "@/lib/search-params";
-
-const SAFETY_TIMEOUT_MS = 10_000;
 
 /**
  * One navigation primitive for catalogue controls. The URL is the state, so the
@@ -30,20 +29,19 @@ export function useOptimisticParams(): {
   // the new rows exist.
   const keptScroll = useRef<number | null>(null);
 
+  const urlKey = searchParams.toString();
   // Keyed on the URL, not on the values that produced it: the skeleton is up
   // until the router lands, whether the server was fast or never answered.
-  useEffect(() => {
-    endPending();
-    const safety = setTimeout(endPending, SAFETY_TIMEOUT_MS);
+  useSettlePending(urlKey);
+
+  useUrlCommit(urlKey, () => {
     const restore = keptScroll.current;
     keptScroll.current = null;
-    if (restore !== null) {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: restore, behavior: "auto" });
-      });
-    }
-    return () => clearTimeout(safety);
-  }, [searchParams]);
+    if (restore === null) return;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: restore, behavior: "auto" });
+    });
+  });
 
   function navigate(params: CatalogueParams, mode: "push" | "replace" = "push") {
     const href = catalogueHref(params);

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type MouseEvent, type ReactNode } from "react";
+import { useState, useTransition, type MouseEvent, type ReactNode } from "react";
+import { useSettlePending, useUrlCommit } from "@/lib/hooks";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Ellipsis } from "lucide-react";
 import { cn } from "@repo/shared";
-import { beginPending, endPending } from "@/lib/navigation-pending";
+import { beginPending } from "@/lib/navigation-pending";
 
 type PaginationProps = {
   page: number;
@@ -21,9 +22,6 @@ const CONTROL =
   "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-sm font-medium tabular-nums transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 sm:h-8 sm:w-8 [&_svg]:size-4";
 
 const CURRENT = "border-primary bg-primary text-primary-foreground";
-
-// A navigation that never lands must not leave the list in a skeleton forever.
-const SAFETY_TIMEOUT_MS = 10_000;
 
 type PageItem = { kind: "page"; value: number } | { kind: "gap"; jumpTo: number };
 
@@ -84,21 +82,16 @@ export function Pagination({
 
   // The URL is the source of truth: when it reflects the new page the skeleton
   // goes, whether or not anything else reported the navigation as finished.
-  const lastPage = useRef(page);
-  useEffect(() => {
-    endPending();
-    const safety = setTimeout(endPending, SAFETY_TIMEOUT_MS);
-    // The router can land a searchParams change with the window back at the top;
-    // re-anchor after the new rows exist, not during the click.
-    const moved = lastPage.current !== page;
-    lastPage.current = page;
-    if (moved && scrollTargetId) {
-      requestAnimationFrame(() => {
-        document.getElementById(scrollTargetId)?.scrollIntoView({ block: "start" });
-      });
-    }
-    return () => clearTimeout(safety);
-  }, [page, pages, scrollTargetId]);
+  useSettlePending(`${page}:${pages}`);
+
+  // The router can land a searchParams change with the window back at the top;
+  // re-anchor after the new rows exist, not during the click.
+  useUrlCommit(`${page}:${pages}`, () => {
+    if (!scrollTargetId) return;
+    requestAnimationFrame(() => {
+      document.getElementById(scrollTargetId)?.scrollIntoView({ block: "start" });
+    });
+  });
 
   if (pages <= 1) return null;
 

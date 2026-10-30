@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useEventListener, useInterval, useMediaQuery } from "@/lib/hooks";
 
 export type HeroSlide = {
   id: string;
@@ -21,27 +22,23 @@ export function FeaturedHero({ slides }: { slides: HeroSlide[] }) {
 
   const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
 
-  useEffect(() => {
-    if (count < 2 || paused) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
-    const timer = window.setInterval(
-      () => setIndex((current) => (current + 1) % count),
-      INTERVAL_MS,
-    );
-    return () => window.clearInterval(timer);
-  }, [count, paused]);
+  useInterval(
+    () => setIndex((current) => (current + 1) % count),
+    count > 1 && !paused && !reducedMotion ? INTERVAL_MS : null,
+  );
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowRight") setIndex((current) => (current + 1) % count);
-      if (event.key === "ArrowLeft") setIndex((current) => (current - 1 + count) % count);
-    }
-    if (count > 1) {
-      window.addEventListener("keydown", onKeyDown);
-      return () => window.removeEventListener("keydown", onKeyDown);
-    }
-  }, [count]);
+  useEventListener(
+    () => window,
+    "keydown",
+    (event) => {
+      const key = (event as KeyboardEvent).key;
+      if (key === "ArrowRight") setIndex((current) => (current + 1) % count);
+      if (key === "ArrowLeft") setIndex((current) => (current - 1 + count) % count);
+    },
+    { enabled: count > 1 },
+  );
 
   return (
     <section

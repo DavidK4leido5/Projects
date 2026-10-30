@@ -32,7 +32,8 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { createProduct, deleteProduct, updateProduct } from "@/features/products/actions";
 import type { ProductListItem, ProductScope } from "@/features/products/queries";
-import { beginPending, useSettlePending } from "@/lib/navigation-pending";
+import { useSettlePending } from "@/lib/hooks";
+import { beginPending } from "@/lib/navigation-pending";
 import type { ProductProperty, VariantOptions } from "@/lib/db/schema";
 
 const SORT_OPTIONS = [

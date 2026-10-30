@@ -1,8 +1,8 @@
 "use client";
 
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useMediaQuery } from "@/lib/use-media-query";
+import { useCallback, useRef, useState } from "react";
+import { useElementOffsetTop, useMediaQuery, useNearEnd } from "@/lib/hooks";
 import { ProductCard } from "@/components/product-card";
 import type { ProductCardModel } from "@/features/catalog/queries";
 import type { CataloguePage, CatalogueQuery } from "@/lib/catalogue-client";
@@ -51,10 +51,6 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
   const [items, setItems] = useState(initialItems);
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
-  // Null until the list's top is known: the first paint must not read layout,
-  // and the near-the-end check waits for a measured offset.
-  const [scrollMargin, setScrollMargin] = useState<number | null>(null);
-
   const wrapperRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
   const pageRef = useRef(initialPage);
@@ -65,15 +61,9 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
   const visibleItems = mobile ? items : initialItems;
   const rowCount = Math.ceil(visibleItems.length / columns);
 
-  useEffect(() => {
-    const update = () => {
-      const next = wrapperRef.current?.offsetTop ?? 0;
-      setScrollMargin((current) => (current === next ? current : next));
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
+  // Null until the list's top is known: the first paint must not read layout,
+  // and the near-the-end check waits for a measured offset.
+  const scrollMargin = useElementOffsetTop(wrapperRef);
 
   // Rows change height and width with the column count, so the measurement
   // cache is keyed per column count instead of being reused across layouts.
@@ -121,14 +111,9 @@ export function CatalogueGrid({ initialItems, initialPage, pages, search }: Cata
   const virtualRows = virtualizer.getVirtualItems();
   const lastRow = virtualizer.range?.endIndex ?? -1;
 
-  useEffect(() => {
-    if (!mobile || scrollMargin === null || lastRow < rowCount - 2) return;
-    // Deferred a tick: the effect must not start a state update in the same
-    // render pass the virtualizer just triggered.
-    queueMicrotask(() => {
-      void loadMore();
-    });
-  }, [mobile, lastRow, rowCount, scrollMargin, loadMore]);
+  useNearEnd(mobile && scrollMargin !== null ? lastRow : -1, rowCount, 2, () => {
+    void loadMore();
+  });
 
   return (
     <div ref={wrapperRef} aria-busy={loading}>

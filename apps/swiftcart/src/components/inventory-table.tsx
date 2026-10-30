@@ -15,7 +15,8 @@ import {
 import { ResultsRegion } from "@/components/results-region";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { updateVariantStock } from "@/features/store/inventory-actions";
-import { beginPending, useSettlePending } from "@/lib/navigation-pending";
+import { useSettlePending } from "@/lib/hooks";
+import { beginPending } from "@/lib/navigation-pending";
 import type { StoreItem, StoreVariant } from "@/features/products/queries";
 import type { VariantOptions } from "@/lib/db/schema";
 

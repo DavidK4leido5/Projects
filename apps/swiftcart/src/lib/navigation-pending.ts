@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 /**
  * A pager and the results it replaces live in different components, on either
@@ -66,13 +66,4 @@ function getServerSnapshot(): boolean {
 
 export function useNavigationPending(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-}
-/**
- * Drops the pending flag once the URL the navigation asked for is the URL in
- * use. One hook instead of the same effect copied into every table.
- */
-export function useSettlePending(key: string): void {
-  useEffect(() => {
-    endPending();
-  }, [key]);
 }

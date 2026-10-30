@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
+import { useDebouncedSearchField } from "@/lib/hooks";
 import { CATALOGUE_PATH, readCatalogueParams } from "@/lib/search-params";
 import { useOptimisticParams } from "@/lib/use-optimistic-params";
 
@@ -14,38 +15,6 @@ const INPUT_CLASS = {
     "w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm outline-none transition-colors focus:border-neutral-400 focus:bg-white",
 } as const;
 
-/** Runs `onSettle` once typing pauses; `cancel` drops a pending run. */
-function useDebounced(onSettle: (value: string) => void, delay: number) {
-  // The timer lives in a ref, so the callback it fires is read at fire time.
-  // useEffectEvent cannot be used here: it may only be called from an effect.
-  const latest = useRef(onSettle);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    latest.current = onSettle;
-  }, [onSettle]);
-
-  useEffect(() => {
-    return () => {
-      if (timer.current !== null) clearTimeout(timer.current);
-    };
-  }, []);
-
-  return {
-    schedule(value: string) {
-      if (timer.current !== null) clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        timer.current = null;
-        latest.current(value);
-      }, delay);
-    },
-    cancel() {
-      if (timer.current !== null) clearTimeout(timer.current);
-      timer.current = null;
-    },
-  };
-}
-
 /**
  * URL-driven catalogue search. The input owns its own value while the shopper
  * types, so results streaming in never remount it or move the caret.
@@ -56,19 +25,6 @@ export function CatalogSearch({ variant = "desktop" }: { variant?: "desktop" | "
   const urlQuery = searchParams.get("q") ?? "";
   const { navigate, pending } = useOptimisticParams();
 
-  const [value, setValue] = useState(urlQuery);
-  const typing = useRef(false);
-
-  // The URL wins unless the shopper is typing. Once their value reaches the URL
-  // they are in sync again, so a later back button or clear can move the box.
-  useEffect(() => {
-    if (typing.current) {
-      if (urlQuery === value) typing.current = false;
-      return;
-    }
-    setValue(urlQuery);
-  }, [urlQuery, value]);
-
   function go(next: string) {
     const onCatalogue = pathname === CATALOGUE_PATH;
     if (onCatalogue && next === urlQuery) return;
@@ -78,20 +34,25 @@ export function CatalogSearch({ variant = "desktop" }: { variant?: "desktop" | "
     );
   }
 
-  const debounce = useDebounced(go, DEBOUNCE_MS);
+  const {
+    input,
+    setInput,
+    flush,
+    pending: settling,
+  } = useDebouncedSearchField({
+    value: urlQuery,
+    onCommit: go,
+    delay: DEBOUNCE_MS,
+  });
 
   function onChange(event: ChangeEvent<HTMLInputElement>) {
-    const next = event.target.value;
-    typing.current = true;
-    setValue(next);
-    debounce.schedule(next);
+    setInput(event.target.value);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    debounce.cancel();
-    go(value);
+    flush();
   }
 
   const desktop = variant === "desktop";
@@ -112,12 +73,12 @@ export function CatalogSearch({ variant = "desktop" }: { variant?: "desktop" | "
       <input
         name="q"
         type="search"
-        value={value}
+        value={input}
         onChange={onChange}
         onKeyDown={onKeyDown}
         placeholder="Search products or stores"
         aria-label="Search products or stores"
-        aria-busy={pending}
+        aria-busy={pending || settling}
         className={desktop ? INPUT_CLASS.desktop : INPUT_CLASS.mobile}
       />
     </div>

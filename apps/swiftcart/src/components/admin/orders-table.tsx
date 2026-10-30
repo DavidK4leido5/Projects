@@ -27,7 +27,8 @@ import { RowMenu } from "@/components/row-menu";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { addOrderNote, setFulfilmentStatus } from "@/features/orders/tracking-actions";
-import { beginPending, useSettlePending } from "@/lib/navigation-pending";
+import { useSettlePending } from "@/lib/hooks";
+import { beginPending } from "@/lib/navigation-pending";
 import { orderStatus } from "@/lib/order-rollup";
 import { nextStatus, type SliceStatus } from "@/lib/order-status";
 

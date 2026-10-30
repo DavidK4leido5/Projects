@@ -24,7 +24,8 @@ import { RowMenu, type RowMenuItem } from "@/components/row-menu";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { TableToolbar } from "@/components/table-toolbar";
 import { changeUserRole, removeUserAccount } from "@/features/admin/actions";
-import { beginPending, useSettlePending } from "@/lib/navigation-pending";
+import { useSettlePending } from "@/lib/hooks";
+import { beginPending } from "@/lib/navigation-pending";
 import type { Role } from "@/lib/db/schema";
 
 const USERS_PATH = "/admin/users";

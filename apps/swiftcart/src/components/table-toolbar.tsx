@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Search } from "lucide-react";
-import { useDebouncedSearch } from "@/lib/use-debounced-search";
+import { useDebouncedSearchField } from "@/lib/hooks";
 
 export type TableToolbarProps = {
   value: string;
@@ -21,9 +21,9 @@ export function TableToolbar({
   count,
   countLabel,
 }: TableToolbarProps) {
-  const { input, setInput, pending, flush } = useDebouncedSearch({
+  const { input, setInput, pending, flush } = useDebouncedSearchField({
     value,
-    onSearch,
+    onCommit: onSearch,
     delay: 250,
   });
 

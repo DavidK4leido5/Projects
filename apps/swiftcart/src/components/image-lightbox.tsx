@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useBodyScrollLock, useEventListener } from "@/lib/hooks";
 import { Minus, Plus, RotateCcw, X } from "lucide-react";
 
 type View = { zoom: number; x: number; y: number };
@@ -71,40 +72,39 @@ export function ZoomableImage({
     [view.zoom, zoomBy],
   );
 
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+  useBodyScrollLock(open);
 
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") close();
-      if (event.key === "0") setView(FULL);
-      if (event.key === "+") stepZoom(0.5);
-      if (event.key === "-") stepZoom(-0.5);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previous;
-    };
-  }, [open, close, stepZoom]);
+  useEventListener(
+    () => window,
+    "keydown",
+    (event) => {
+      const key = (event as KeyboardEvent).key;
+      if (key === "Escape") close();
+      if (key === "0") setView(FULL);
+      if (key === "+") stepZoom(0.5);
+      if (key === "-") stepZoom(-0.5);
+    },
+    { enabled: open },
+  );
 
   // The wheel zooms toward the pointer, so the stage itself never scrolls.
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!open || !stage) return;
-    const el = stage;
-
-    function onWheel(event: WheelEvent) {
-      event.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const cx = event.clientX - rect.left - rect.width / 2;
-      const cy = event.clientY - rect.top - rect.height / 2;
-      zoomBy(event.deltaY < 0 ? 1.25 : 0.8, cx, cy);
-    }
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [open, zoomBy]);
+  useEventListener(
+    () => stageRef.current,
+    "wheel",
+    (event) => {
+      const wheel = event as WheelEvent;
+      wheel.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) return;
+      const rect = stage.getBoundingClientRect();
+      zoomBy(
+        wheel.deltaY < 0 ? 1.25 : 0.8,
+        wheel.clientX - rect.left - rect.width / 2,
+        wheel.clientY - rect.top - rect.height / 2,
+      );
+    },
+    { enabled: open, passive: false },
+  );
 
   if (!current) return null;
 
