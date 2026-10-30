@@ -20,6 +20,7 @@
     "@radix-ui/react-slot": "catalog:",
     "@repo/shared": "workspace:*",
     "class-variance-authority": "catalog:",
+    "embla-carousel-react": "catalog:",
     "lucide-react": "catalog:"
   },
   "peerDependencies": {

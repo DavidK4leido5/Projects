@@ -94,7 +94,8 @@ Detail: [references/ui-and-hooks.md](references/ui-and-hooks.md)
 
 - Primitives come from `@repo/ui` (shadcn vendored). Build with them; never copy a primitive into the app.
 - Shared shells: `EntityDrawer` (side sheet), `RowMenu` (grouped overflow menu), `TableToolbar`
-  (debounced search + filters + count), `TableSkeleton`, `ProductCard` (compact, image-led, one link).
+  (debounced search + filters + count), `TableSkeleton`, `ProductCard` (compact, image-led, one link),
+  `Carousel` (embla-backed track: drag, swipe, loop, snap; chrome stays with the caller).
 - Drawer flows: admin users, admin products, store products all use `EntityDrawer`; product form is the
   same component in both roles.
 
@@ -141,7 +142,7 @@ return `{ ok }` or `{ ok: false, error }`. In the component: `useOptimistic` + t
 - `updateTag` throws in route handlers. Use `revalidateTag(tag, "max")`.
 - Migrations are staged: add nullable → backfill → drop/constrain. Drizzle will guess renames otherwise.
 - Deleting products/stores leaves orphan objects in the bucket; rows cascade, files do not.
-- The hero is a cloned track slider; wrapping depends on the two clone slides.
+- The hero is an embla carousel; drag, loop and snap are the library's, the arrows and dots are ours.
 - Per-user caching is the one way to leak data. Keep those reads uncached.
 - Detail: [references/pitfalls.md](references/pitfalls.md)
 

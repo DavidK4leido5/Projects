@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import type { CarouselApi } from "@repo/ui";
 import { endPending } from "@/lib/navigation-pending";
 
 /** A ref that always holds the latest value, without re-subscribing listeners. */
@@ -127,6 +128,23 @@ export function useNearEnd(
     // Deferred a tick: the virtualiser triggers this from its own render pass.
     queueMicrotask(() => latest.current());
   }, [index, count, threshold, latest]);
+}
+
+/** The slide embla is currently on, for dots and counters. */
+export function useCarouselIndex(api: CarouselApi): number {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (!api) return () => {};
+      api.on("select", onChange);
+      api.on("reInit", onChange);
+      return () => {
+        api.off("select", onChange);
+        api.off("reInit", onChange);
+      };
+    },
+    () => api?.selectedScrollSnap() ?? 0,
+    () => 0,
+  );
 }
 
 /** Runs `onCommit` when `key` changes, skipping the first render. */

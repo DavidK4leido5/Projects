@@ -50,3 +50,4 @@ export {
   TableRow,
 } from "./table";
 export { Textarea } from "./textarea";
+export { Carousel, CarouselContent, CarouselItem, useCarousel, type CarouselApi } from "./carousel";
