@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import {
   Button,
   Input,
@@ -15,7 +15,7 @@ import {
 import { ResultsRegion } from "@/components/results-region";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { updateVariantStock } from "@/features/store/inventory-actions";
-import { beginPending, endPending } from "@/lib/navigation-pending";
+import { beginPending, useSettlePending } from "@/lib/navigation-pending";
 import type { StoreItem, StoreVariant } from "@/features/products/queries";
 import type { VariantOptions } from "@/lib/db/schema";
 
@@ -58,9 +58,7 @@ export function InventoryTable({ items }: { items: StoreItem[] }) {
   const rawFilter = searchParams.get("filter");
   const urlFilter: Filter = rawFilter === "low" || rawFilter === "out" ? rawFilter : "all";
   const paramsKey = searchParams.toString();
-  useEffect(() => {
-    endPending();
-  }, [paramsKey]);
+  useSettlePending(paramsKey);
 
   const baseStocks: Record<string, number> = {};
   for (const item of items) {
