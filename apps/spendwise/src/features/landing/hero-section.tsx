@@ -1,22 +1,25 @@
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { BrowserFrame, Button } from "@repo/ui";
+import { ShaderMetal } from "@/components/ui/shader-metal";
 import { hero, site } from "@/features/landing/content";
-import { GlassFold } from "@/features/landing/glass-fold";
 import { DashboardPreview } from "@/features/landing/preview/dashboard-preview";
 
 export function HeroSection() {
   return (
     <section aria-labelledby="hero-title" className="relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--accent),transparent_62%)]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:56px_56px] opacity-30 [mask-image:linear-gradient(to_bottom,var(--foreground),transparent)]"
-      />
-      <GlassFold />
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--accent),transparent_62%)]" />
+        <ShaderMetal
+          className="hidden opacity-[0.45] [mask-image:linear-gradient(to_bottom,black,black_58%,transparent)] sm:block dark:opacity-[0.68]"
+          ribbons={4}
+          speed={0.18}
+          iridescence={0.16}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,var(--background)_0%,var(--background)_32%,transparent_70%)]" />
+        <div className="absolute left-1/2 top-24 h-[360px] w-[min(760px,90vw)] -translate-x-1/2 rounded-full bg-background/80 blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-b from-transparent to-background" />
+      </div>
 
       <div className="relative mx-auto w-full max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pb-24 sm:pt-24">
         <div className="landing-enter mx-auto max-w-3xl text-center">
