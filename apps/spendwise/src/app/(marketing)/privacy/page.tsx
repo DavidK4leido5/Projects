@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui";
+import { brand } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { absolute: "Privacy | SpendWise" },
+  title: { absolute: `Privacy | ${brand.name}` },
   alternates: { canonical: "/privacy" },
-  description:
-    "What SpendWise stores, how your records are used, and the controls you have over your data.",
+  description: `What ${brand.name} stores, how your records are used, and the controls you have over your data.`,
 };
 
 type Section = {
@@ -18,11 +18,11 @@ const sections: readonly Section[] = [
   {
     title: "What we store",
     paragraphs: [
-      "SpendWise keeps an account record for you and the entries you create in the app.",
+      `${brand.name} keeps an account record for you and the entries you create in the app.`,
     ],
     bullets: [
       "Your email address, used to sign in and to send account email.",
-      "Your password, handled by Neon Auth. Passwords are hashed by the auth service and SpendWise never stores or sees a plain password.",
+      `Your password, handled by Neon Auth. Passwords are hashed by the auth service and ${brand.name} never stores or sees a plain password.`,
       "Financial records you enter: accounts and balances, transactions, categories, budgets, goals, and recurring bills.",
       "Receipt files you attach to a transaction, stored in Neon object storage.",
       "A report logo if you upload one, stored in Cloudinary.",
@@ -33,7 +33,7 @@ const sections: readonly Section[] = [
     title: "How it is used",
     paragraphs: [
       "Your records are used to run the app for you and for nothing else. That means rendering your dashboard, calculating cash flow and budget progress, generating reports and exports, and sending account email such as a password reset.",
-      "There are no bank connections, no advertising or analytics scripts, and no sale or sharing of your data with advertisers. SpendWise does not build a profile of you beyond the numbers you enter.",
+      `There are no bank connections, no advertising or analytics scripts, and no sale or sharing of your data with advertisers. ${brand.name} does not build a profile of you beyond the numbers you enter.`,
     ],
   },
   {
@@ -56,7 +56,7 @@ const sections: readonly Section[] = [
   {
     title: "Contact",
     paragraphs: [
-      "Questions about your data, or a request you cannot complete in Settings, can go to privacy@spendwise.app.",
+      `Questions about your data, or a request you cannot complete in Settings, can go to ${brand.privacyEmail}.`,
     ],
   },
 ];
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
       </div>
 
       <p className="mt-12 border-t border-border pt-6 text-xs leading-relaxed text-muted-foreground">
-        SpendWise is a personal record book, not a bank or a financial advisor.
+        {brand.name} is a personal record book, not a bank or a financial advisor.
       </p>
     </div>
   );

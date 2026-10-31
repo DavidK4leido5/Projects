@@ -15,11 +15,11 @@ export const categoryColors = [
 const DOT_CLASSES: Record<string, string> = {
   emerald: "bg-chart-1",
   teal: "bg-primary",
-  sky: "bg-chart-4",
-  indigo: "bg-chart-2",
+  sky: "bg-chart-3",
+  indigo: "bg-chart-4",
   violet: "bg-chart-5",
   rose: "bg-negative",
-  amber: "bg-chart-3",
+  amber: "bg-gold",
   orange: "bg-destructive",
   slate: "bg-muted-foreground",
 };

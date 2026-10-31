@@ -19,6 +19,7 @@ import { PreferencesForm } from "@/features/settings/preferences-form";
 import { ProfileForm } from "@/features/settings/profile-form";
 import { getSettings } from "@/features/settings/queries";
 import { requireUser } from "@/lib/auth/session";
+import { brand } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -44,7 +45,9 @@ async function SettingsBody() {
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <CardDescription>The name that appears across SpendWise and in reports.</CardDescription>
+          <CardDescription>
+            The name that appears across {brand.name} and in reports.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ProfileForm name={user.name} email={user.email} />

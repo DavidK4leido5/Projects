@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { BrowserFrame, Button } from "@repo/ui";
 import { hero, site } from "@/features/landing/content";
+import { GlassFold } from "@/features/landing/glass-fold";
 import { DashboardPreview } from "@/features/landing/preview/dashboard-preview";
 
 export function HeroSection() {
@@ -15,6 +16,7 @@ export function HeroSection() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:56px_56px] opacity-30 [mask-image:linear-gradient(to_bottom,var(--foreground),transparent)]"
       />
+      <GlassFold />
 
       <div className="relative mx-auto w-full max-w-6xl px-4 pb-20 pt-16 sm:px-6 sm:pb-24 sm:pt-24">
         <div className="landing-enter mx-auto max-w-3xl text-center">
@@ -47,7 +49,7 @@ export function HeroSection() {
         <div className="relative mx-auto mt-14 max-w-6xl sm:mt-20">
           <div
             role="img"
-            aria-label="Preview of the SpendWise dashboard showing total balance, income, expenses, cash flow, spending by category, budgets, goals, and upcoming bills."
+            aria-label="Preview of the Dalorro dashboard showing total balance, income, expenses, cash flow, spending by category, budgets, goals, and upcoming bills."
             className="landing-enter-late relative mx-auto max-w-5xl"
           >
             <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:[transform:perspective(1800px)_rotateX(1.2deg)]">

@@ -14,8 +14,8 @@ const STATE_META = {
   },
   near_limit: {
     label: "Close",
-    tone: "text-chart-3",
-    indicator: "[&_[data-slot=progress-indicator]]:bg-chart-3",
+    tone: "text-warning",
+    indicator: "[&_[data-slot=progress-indicator]]:bg-warning",
     icon: AlertTriangle,
   },
   exceeded: {

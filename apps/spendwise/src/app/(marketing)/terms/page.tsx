@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui";
+import { brand } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { absolute: "Terms | SpendWise" },
+  title: { absolute: `Terms | ${brand.name}` },
   alternates: { canonical: "/terms" },
-  description:
-    "The terms that apply when you use SpendWise to record income, expenses, budgets, and goals.",
+  description: `The terms that apply when you use ${brand.name} to record income, expenses, budgets, and goals.`,
 };
 
 type Section = {
@@ -18,8 +18,8 @@ const sections: readonly Section[] = [
   {
     title: "The service",
     paragraphs: [
-      "SpendWise is a personal record book. It stores the income, expenses, accounts, budgets, goals, and recurring bills you enter, then shows them back to you as summaries, charts, and reports.",
-      "SpendWise is not a bank, a payment service, or a financial advisor. It does not move money, hold funds, connect to your bank accounts, or give investment, tax, or legal advice. Every figure in the app comes from what you enter, so the accuracy of a report depends on the accuracy of your entries.",
+      `${brand.name} is a personal record book. It stores the income, expenses, accounts, budgets, goals, and recurring bills you enter, then shows them back to you as summaries, charts, and reports.`,
+      `${brand.name} is not a bank, a payment service, or a financial advisor. It does not move money, hold funds, connect to your bank accounts, or give investment, tax, or legal advice. Every figure in the app comes from what you enter, so the accuracy of a report depends on the accuracy of your entries.`,
     ],
   },
   {
@@ -33,7 +33,7 @@ const sections: readonly Section[] = [
   {
     title: "Your data",
     paragraphs: [
-      "The records you enter stay yours. You give SpendWise permission to store and process them so the app can work for you, and for nothing beyond that.",
+      `The records you enter stay yours. You give ${brand.name} permission to store and process them so the app can work for you, and for nothing beyond that.`,
       "Keep your own copy of anything you would be sorry to lose. Settings exports every record as JSON, and filtered transactions export as CSV.",
       "You can delete your financial data or your whole account in Settings. Deletion removes your records and receipt files, and cannot be undone.",
     ],
@@ -41,7 +41,7 @@ const sections: readonly Section[] = [
   {
     title: "Acceptable use",
     bullets: [
-      "Use SpendWise for your own personal records, or for records you are allowed to keep.",
+      `Use ${brand.name} for your own personal records, or for records you are allowed to keep.`,
       "Do not try to reach another account's records, or probe, scan, or overload the service.",
       "Do not upload files that contain malware, or content you have no right to store.",
       "Do not resell the service or run automated scraping against it.",
@@ -57,13 +57,13 @@ const sections: readonly Section[] = [
   {
     title: "Availability",
     paragraphs: [
-      "SpendWise is provided as is. Features may change, and the service may be paused for maintenance or stopped entirely.",
-      "There is no guarantee of uninterrupted or error free operation. Where the law allows, SpendWise is not liable for lost entries, lost profit, or indirect losses, so keep an export of anything that matters.",
+      `${brand.name} is provided as is. Features may change, and the service may be paused for maintenance or stopped entirely.`,
+      `There is no guarantee of uninterrupted or error free operation. Where the law allows, ${brand.name} is not liable for lost entries, lost profit, or indirect losses, so keep an export of anything that matters.`,
     ],
   },
   {
     title: "Contact",
-    paragraphs: ["Questions about these terms can go to support@spendwise.app."],
+    paragraphs: [`Questions about these terms can go to ${brand.supportEmail}.`],
   },
 ];
 
@@ -103,7 +103,7 @@ export default function TermsPage() {
       </div>
 
       <p className="mt-12 border-t border-border pt-6 text-xs leading-relaxed text-muted-foreground">
-        SpendWise is a personal record book, not a bank or a financial advisor.
+        {brand.name} is a personal record book, not a bank or a financial advisor.
       </p>
     </div>
   );

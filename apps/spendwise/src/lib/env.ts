@@ -1,3 +1,4 @@
+import { brand } from "@/lib/brand";
 import { z } from "zod";
 
 /**
@@ -18,7 +19,7 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().min(1).optional(),
   CLOUDINARY_API_SECRET: z.string().min(1).optional(),
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: z.string().optional(),
-  NEXT_PUBLIC_APP_NAME: z.string().default("SpendWise"),
+  NEXT_PUBLIC_APP_NAME: z.string().default(brand.name),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

@@ -1,6 +1,6 @@
-# SpendWise
+# Dalorro
 
-A personal finance record book: accounts, transactions, budgets, goals, cash flow, and PDF reports.
+Dalorro is a personal finance record book: accounts, transactions, budgets, goals, cash flow, and PDF reports.
 There are no bank, card, or payment-provider integrations. Every entry is recorded by the user, and
 PDF reports are the primary output. Next.js 16 (App Router, React 19), Neon Postgres with Drizzle,
 Neon Auth (Managed Better Auth), Neon Object Storage for receipts, Cloudinary for report branding.
@@ -65,7 +65,7 @@ database or auth session is needed for the content.
 ### Before launch
 
 1. Set `NEXT_PUBLIC_APP_URL` to the production origin (canonicals, sitemap, robots, OG).
-2. Replace `SpendWise` and `spendwise.app` in `content.ts`, the OG image, and the footer.
+2. Confirm the landing copy, the OG image, and the footer use the Dalorro name and `dalorro.app`.
 3. Replace the placeholder privacy and terms copy with reviewed policies. Update the contact email.
 4. Confirm the currency and locale in `mock-data.ts` (`PHP` / `en-PH` by default).
 5. Add a real sample PDF if you want a "Download sample" button. The current page does not fake one.
@@ -105,15 +105,15 @@ Rules this app follows:
 The seeded test account:
 
 ```text
-Email:    demo@spendwise.app
-Password: SpendWise2026!
+Email:    demo@dalorro.app
+Password: Dalorro2026!
 ```
 
 It has six months of accounts, categories, transactions, budgets, goals, bills, and notifications.
 Re-seed it at any time:
 
 ```bash
-pnpm --filter @repo/db db:seed -- --email=demo@spendwise.app
+pnpm --filter @repo/db db:seed -- --email=demo@dalorro.app
 ```
 
 This account exists only for local testing. Delete it before putting a real environment in front of
@@ -127,7 +127,7 @@ neon neon-auth user delete <user-id>
 pnpm --filter @repo/db db:seed -- --email=you@example.com
 ```
 
-Use your own email after signing up. The seed replaces that user's SpendWise rows.
+Use your own email after signing up. The seed replaces that user's Dalorro rows.
 
 ## Neon setup
 
@@ -194,13 +194,13 @@ pnpm --filter @repo/db db:seed -- --email=you@example.com
 All app tables live in the `spendwise` Postgres schema. Neon Auth owns `neon_auth` and is never
 modified. Every app row stores `user_id uuid` matching `neon_auth.user.id`; there is intentionally
 no cross-schema foreign key, so the app schema stays portable and Auth can be managed separately.
-Deleting a user should delete their SpendWise rows in application code (the export route shows the
+Deleting a user should delete their Dalorro rows in application code (the export route shows the
 complete list).
 
 The seed:
 
 1. Finds the most recent Neon Auth user, or the one passed with `--email`.
-2. Replaces that user's SpendWise rows with six months of deterministic demo data.
+2. Replaces that user's Dalorro rows with six months of deterministic demo data.
 3. Creates five accounts, 15 parent + 20 child categories, ~180 transactions (including monthly
    transfers), current-month budgets, three goals with contributions, six recurring bills, two
    notifications, and one report history row.
@@ -220,7 +220,7 @@ Sign up in the app once, then run the seed.
 | `AWS_ENDPOINT_URL_S3` / `AWS_REGION`                                     | Object-storage endpoint and region                        |
 | `OBJECT_STORAGE_BUCKET`                                                  | Bucket name; defaults to `assets` from `neon.ts`          |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Report logo upload                                        |
-| `NEXT_PUBLIC_APP_NAME`                                                   | Display name, defaults to SpendWise                       |
+| `NEXT_PUBLIC_APP_NAME`                                                   | Display name, defaults to Dalorro                         |
 
 Copy `apps/spendwise/.env.example` and fill it in. Never commit `.env.local`.
 
@@ -234,7 +234,7 @@ pnpm --filter @repo/spendwise dev     # http://localhost:3001
 The SwiftCart app owns port 3000. From the repo root, `pnpm spendwise` is an alias.
 
 The Playwright suite signs in with `E2E_EMAIL` / `E2E_PASSWORD` (defaults to the seeded
-`demo@spendwise.app` account) and expects the dev server or `E2E_BASE_URL` to be reachable. Install
+`demo@dalorro.app` account) and expects the dev server or `E2E_BASE_URL` to be reachable. Install
 the browser once with `pnpm --filter @repo/spendwise exec playwright install chromium`.
 
 Checks:
@@ -259,7 +259,7 @@ pnpm exec eslint apps/spendwise packages/ui packages/db packages/finance
    unpooled URL before promoting.
 5. Add the deployment origin to Neon Auth trusted domains:
    `neon neon-auth domain add https://your-app.vercel.app`.
-6. `.github/workflows/ci.yml` runs lint, typecheck, format, unit tests, and the SpendWise build on
+6. `.github/workflows/ci.yml` runs lint, typecheck, format, unit tests, and the Dalorro build on
    pushes and pull requests. A push to `master` triggers the Vercel production deployment. To enable
    previews later, add a Neon preview branch and its own Auth/storage env, then allow the branch in
    `vercel.json`.
@@ -267,7 +267,7 @@ pnpm exec eslint apps/spendwise packages/ui packages/db packages/finance
 ## Deliberate limits
 
 - Managed Auth's self-service `delete-user` endpoint is disabled on this branch. Account deletion
-  therefore verifies the password, removes every SpendWise row and receipt object, and signs the
+  therefore verifies the password, removes every Dalorro row and receipt object, and signs the
   user out. The sign-in identity remains with the auth provider. An operator can finish it with
   `neon neon-auth user delete <user-id>`. When Neon enables `delete-user`, the same action deletes
   the identity first and then purges the data.

@@ -264,5 +264,5 @@ export const reportTypes = [
 export const demoUser = {
   name: "Demo User",
   initials: "DU",
-  email: "demo@spendwise.app",
+  email: "demo@dalorro.app",
 } as const;

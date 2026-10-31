@@ -26,6 +26,7 @@ export async function GET(request: Request) {
 
   const encoder = new TextEncoder();
   let client: Client | undefined;
+  let connected = false;
   let keepAlive: ReturnType<typeof setInterval> | undefined;
   let lifetime: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
@@ -36,7 +37,13 @@ export async function GET(request: Request) {
     closed = true;
     if (keepAlive) clearInterval(keepAlive);
     if (lifetime) clearTimeout(lifetime);
-    void client?.end().catch(() => undefined);
+    if (connected) {
+      try {
+        void client?.end().catch(() => undefined);
+      } catch {
+        // The Neon WebSocket can throw if the connection closed before it opened.
+      }
+    }
     try {
       controllerRef?.close();
     } catch {
@@ -63,6 +70,11 @@ export async function GET(request: Request) {
       try {
         client = new Client({ connectionString });
         await client.connect();
+        connected = true;
+        if (closed) {
+          await client.end().catch(() => undefined);
+          return;
+        }
         await client.query("listen spendwise_notifications");
 
         client.on("notification", (message) => {

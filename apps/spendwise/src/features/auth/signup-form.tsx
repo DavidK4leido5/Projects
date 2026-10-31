@@ -18,6 +18,7 @@ import {
   Input,
 } from "@repo/ui";
 import { authClient } from "@/lib/auth/client";
+import { brand } from "@/lib/brand";
 import { passwordStrength } from "./password-strength";
 import { PasswordInput } from "./password-input";
 import { signupSchema, type SignupValues } from "./schemas";
@@ -165,7 +166,7 @@ export function SignupForm() {
         </Button>
 
         <p className="text-xs leading-relaxed text-muted-foreground">
-          By continuing you agree to keep your own backup of exported data. SpendWise never sells
+          By continuing you agree to keep your own backup of exported data. {brand.name} never sells
           your information.
         </p>
       </form>

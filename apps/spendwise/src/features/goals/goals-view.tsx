@@ -140,6 +140,7 @@ function GoalCard({
       <CardContent className="flex flex-col gap-4 p-5">
         <div className="flex items-start gap-3">
           <ProgressRing
+            className="[&_svg_circle:last-child]:stroke-gold"
             value={goal.percent}
             size={56}
             strokeWidth={6}
@@ -176,7 +177,11 @@ function GoalCard({
               of {formatMoney(goal.targetAmount, goal.currency, locale)}
             </span>
           </div>
-          <Progress value={Math.min(goal.percent, 100)} aria-label={goal.name + " progress"} />
+          <Progress
+            value={Math.min(goal.percent, 100)}
+            aria-label={goal.name + " progress"}
+            className="[&_[data-slot=progress-indicator]]:bg-gold"
+          />
         </div>
 
         <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">

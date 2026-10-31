@@ -1,15 +1,16 @@
 import type { MetadataRoute } from "next";
+import { brand } from "@/lib/brand";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SpendWise",
-    short_name: "SpendWise",
-    description: "Track income, expenses, budgets, goals, and cash flow.",
+    name: brand.name,
+    short_name: brand.shortName,
+    description: brand.description,
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
-    background_color: "#fbfbfa",
-    theme_color: "#0f6b5c",
+    background_color: brand.pdf.background,
+    theme_color: brand.pdf.accent,
     orientation: "portrait-primary",
     categories: ["finance", "productivity"],
     icons: [

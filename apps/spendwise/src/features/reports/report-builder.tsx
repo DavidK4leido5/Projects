@@ -96,7 +96,7 @@ export function ReportBuilder({
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewName, setPreviewName] = useState("spendwise-report.pdf");
+  const [previewName, setPreviewName] = useState("dalorro-report.pdf");
   const previousUrl = useRef<string | null>(null);
 
   function currentRequest(): ReportRequest {

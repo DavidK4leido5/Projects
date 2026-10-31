@@ -3,7 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { BrowserFrame, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui";
-import { tour } from "@/features/landing/content";
+import { site, tour } from "@/features/landing/content";
 
 function PanelSkeleton() {
   return (
@@ -45,11 +45,11 @@ const TourReports = dynamic(() => import("./tour-reports").then((module) => modu
 });
 
 const PANEL_URL: Record<string, string> = {
-  dashboard: "spendwise.app/dashboard",
-  transactions: "spendwise.app/transactions",
-  "cash-flow": "spendwise.app/cash-flow",
-  budgets: "spendwise.app/budgets",
-  reports: "spendwise.app/reports",
+  dashboard: site.domain + "/dashboard",
+  transactions: site.domain + "/transactions",
+  "cash-flow": site.domain + "/cash-flow",
+  budgets: site.domain + "/budgets",
+  reports: site.domain + "/reports",
 };
 
 export function ProductTour({ dashboard }: { dashboard: React.ReactNode }) {
@@ -69,7 +69,7 @@ export function ProductTour({ dashboard }: { dashboard: React.ReactNode }) {
       </div>
 
       <BrowserFrame
-        url={PANEL_URL[active] ?? PANEL_URL.dashboard ?? "spendwise.app/dashboard"}
+        url={PANEL_URL[active] ?? PANEL_URL.dashboard ?? site.domain + "/dashboard"}
         className="w-full"
         fade
       >

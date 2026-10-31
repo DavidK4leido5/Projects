@@ -18,6 +18,7 @@ import {
   ProgressRing,
 } from "@repo/ui";
 import { budgetProgress, formatDate, formatMoney, percentChange } from "@repo/finance";
+import { brand } from "@/lib/brand";
 import { CashFlowChart } from "@/features/dashboard/cash-flow-chart";
 import { CategoryDonut } from "@/features/dashboard/category-donut";
 import {
@@ -36,13 +37,13 @@ import {
 
 const BUDGET_STATE = {
   on_track: { label: "On track", tone: "text-positive", icon: CheckCircle2 },
-  near_limit: { label: "Close", tone: "text-chart-3", icon: AlertTriangle },
+  near_limit: { label: "Close", tone: "text-warning", icon: AlertTriangle },
   exceeded: { label: "Over", tone: "text-negative", icon: AlertOctagon },
 } as const;
 
 const INDICATOR_TONE = {
   on_track: "[&_[data-slot=progress-indicator]]:bg-positive",
-  near_limit: "[&_[data-slot=progress-indicator]]:bg-chart-3",
+  near_limit: "[&_[data-slot=progress-indicator]]:bg-warning",
   exceeded: "[&_[data-slot=progress-indicator]]:bg-negative",
 } as const;
 
@@ -91,7 +92,7 @@ export function DashboardPreview() {
 
   return (
     <section
-      aria-label="SpendWise dashboard preview"
+      aria-label={brand.name + " dashboard preview"}
       className="w-full bg-background p-3 text-foreground sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">

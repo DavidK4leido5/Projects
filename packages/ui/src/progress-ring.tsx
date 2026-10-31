@@ -42,7 +42,7 @@ function ProgressRing({ value, size = 64, strokeWidth = 6, label, className }: P
           cy={center}
           r={radius}
           fill="none"
-          stroke="var(--primary)"
+          stroke="var(--gold)"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}

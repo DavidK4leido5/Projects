@@ -80,7 +80,7 @@ export async function GET() {
     attachments: attachmentRows.filter((row) => !row.storageKey.startsWith("share:")),
   };
 
-  const fileName = "spendwise-export-" + new Date().toISOString().slice(0, 10) + ".json";
+  const fileName = "dalorro-export-" + new Date().toISOString().slice(0, 10) + ".json";
 
   return new Response(JSON.stringify(payload, null, 2), {
     headers: {

@@ -115,7 +115,7 @@ export async function removeReportLogo(): Promise<ActionResult> {
 /**
  * Removes the account. Managed Auth is asked to delete the identity first; when
  * the provider has self-service deletion disabled, the password is verified and
- * the SpendWise data is purged, leaving only the sign-in identity for support.
+ * the Dalorro data is purged, leaving only the sign-in identity for support.
  */
 export async function deleteAccount(
   password: string,

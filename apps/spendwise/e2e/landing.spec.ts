@@ -4,9 +4,7 @@ import { login } from "./helpers";
 test("landing page presents the product, CTA, and tab tour", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { level: 1, name: /Know where your money goes/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /Let your money flow/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Get started free" }).first()).toHaveAttribute(
     "href",
     "/signup",

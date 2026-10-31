@@ -10,7 +10,7 @@ type BrowserFrameProps = {
 };
 
 function BrowserFrame({
-  url = "app.spendwise.app",
+  url = "app.dalorro.app",
   children,
   className,
   contentClassName,

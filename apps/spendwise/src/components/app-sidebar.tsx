@@ -1,6 +1,5 @@
 "use client";
 
-import { Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +14,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@repo/ui";
+import { Logo } from "@/components/logo";
 import { NAV_ITEMS } from "@/components/nav-items";
+import { brand } from "@/lib/brand";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -25,13 +26,11 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="SpendWise">
+            <SidebarMenuButton size="lg" asChild tooltip={brand.name}>
               <Link href="/dashboard">
-                <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-                  <Wallet className="size-4" aria-hidden />
-                </span>
+                <Logo variant="mark" size="sm" />
                 <span className="grid flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-semibold">SpendWise</span>
+                  <span className="truncate text-sm font-semibold">{brand.name}</span>
                   <span className="truncate text-xs text-muted-foreground">Personal finance</span>
                 </span>
               </Link>

@@ -15,19 +15,19 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify SpendWise and SwiftCart
+    name: Verify Dalorro and SwiftCart
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       TURBO_TELEMETRY_DISABLED: "1"
-      # SpendWise build-time placeholders. Its PPR shells do not query the
+      # Dalorro build-time placeholders. Its PPR shells do not query the
       # database, so no production credentials are needed.
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/spendwise
       NEON_AUTH_BASE_URL: http://127.0.0.1:3001/api/auth
       NEON_AUTH_JWKS_URL: http://127.0.0.1:3001/api/auth/jwks
       NEON_AUTH_COOKIE_SECRET: ci-only-cookie-secret-at-least-32-chars
-      NEXT_PUBLIC_APP_NAME: SpendWise
+      NEXT_PUBLIC_APP_NAME: Dalorro
       NEXT_PUBLIC_APP_URL: http://localhost:3001
       NEON_AUTH_TRUSTED_ORIGIN: http://localhost:3000
       AWS_ACCESS_KEY_ID: ci
@@ -73,7 +73,7 @@ jobs:
       - name: Unit tests
         run: pnpm --filter @repo/spendwise test
 
-      - name: Build SpendWise
+      - name: Build Dalorro
         run: pnpm --filter @repo/spendwise build
 
       - name: Build SwiftCart

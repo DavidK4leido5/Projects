@@ -4,24 +4,28 @@ import type { ReactNode } from "react";
 import { Toaster, TooltipProvider } from "@repo/ui";
 import { PwaRegister } from "@/components/pwa-register";
 import { ThemeProvider } from "@/components/theme-provider";
+import { brand } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "SpendWise", template: "%s | SpendWise" },
-  description: "Track income, expenses, budgets, and savings goals in one calm dashboard.",
-  applicationName: "SpendWise",
+  title: { default: brand.name, template: `%s | ${brand.name}` },
+  description: brand.description,
+  applicationName: brand.name,
   icons: {
-    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
   },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfbfa" },
-    { media: "(prefers-color-scheme: dark)", color: "#111211" },
+    { media: "(prefers-color-scheme: light)", color: brand.pdf.background },
+    { media: "(prefers-color-scheme: dark)", color: brand.colors.dark.background },
   ],
 };
 

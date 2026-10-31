@@ -55,9 +55,7 @@ export function reportFileName(
   dateTo: string,
   extension: "pdf" | "csv",
 ): string {
-  return (
-    "spendwise-" + type.replace(/_/g, "-") + "-" + dateFrom + "-to-" + dateTo + "." + extension
-  );
+  return "dalorro-" + type.replace(/_/g, "-") + "-" + dateFrom + "-to-" + dateTo + "." + extension;
 }
 
 export function toReportRequest(item: ReportHistoryItem) {

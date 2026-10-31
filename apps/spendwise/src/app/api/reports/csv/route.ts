@@ -47,12 +47,12 @@ export async function POST(request: Request) {
     const locale = data.settings.locale;
     const rows: string[] = [];
 
-    rows.push(line(["SpendWise report"]));
+    rows.push(line(["Dalorro report"]));
     rows.push(line(["Title", data.title]));
     rows.push(line(["Type", REPORT_TYPE_META[data.type].label]));
     rows.push(line(["Period", data.range.label]));
     rows.push(line(["Generated", formatDate(data.generatedAt, locale, "MMM d, yyyy HH:mm")]));
-    rows.push(line(["Prepared for", data.userName || "SpendWise user"]));
+    rows.push(line(["Prepared for", data.userName || "Dalorro user"]));
     rows.push(line(["Currency", currency]));
     rows.push("");
 

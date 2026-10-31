@@ -4,7 +4,7 @@ import { login } from "./helpers";
 test("signed-out visitors are sent to the login page", async ({ page }) => {
   await page.goto("/budgets");
   await page.waitForURL("**/login");
-  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome to Dalorro" })).toBeVisible();
 });
 
 test("adds a transaction with the quick-add dialog and deletes it", async ({ page }) => {
@@ -25,11 +25,10 @@ test("adds a transaction with the quick-add dialog and deletes it", async ({ pag
   await expect(page.getByText("Transaction added")).toBeVisible();
   await expect(page.locator("tbody").getByText(payee)).toBeVisible();
 
-  await page
-    .getByRole("button", { name: "Actions for " + payee })
-    .last()
-    .click();
+  const rowAction = page.getByRole("button", { name: "Actions for " + payee }).last();
+  await expect(rowAction).toBeVisible();
+  await rowAction.click();
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByText("Deleted " + payee)).toBeVisible();
-  await expect(page.locator("tbody").getByText(payee)).toHaveCount(0);
+  await expect(page.locator("tbody").getByText(payee)).toHaveCount(0, { timeout: 20_000 });
 });

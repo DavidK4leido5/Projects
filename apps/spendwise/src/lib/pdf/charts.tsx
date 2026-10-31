@@ -1,5 +1,5 @@
 import { Circle, G, Line, Path, Rect, Svg, Text, View } from "@react-pdf/renderer";
-import { ACCENT, ACCENT_TWO, CHART_COLORS, INK, MUTED, RULE, SOFT } from "@/lib/pdf/theme";
+import { ACCENT, CHART_COLORS, EXPENSE, INCOME, INK, MUTED, RULE, SOFT } from "@/lib/pdf/theme";
 import { pdfMoney, pdfMoneyCompact } from "@/lib/pdf/format";
 import type { ReportCategoryRow, ReportMonth } from "@/lib/report-data";
 
@@ -44,8 +44,8 @@ export function CashFlowBars({
     <View>
       <Legend
         items={[
-          { label: "Income", color: ACCENT },
-          { label: "Expenses", color: ACCENT_TWO },
+          { label: "Income", color: INCOME },
+          { label: "Expenses", color: EXPENSE },
         ]}
       />
       <Svg width={CHART_WIDTH} height={height} viewBox={"0 0 " + CHART_WIDTH + " " + height}>
@@ -71,14 +71,14 @@ export function CashFlowBars({
                 y={plotHeight - incomeHeight}
                 width={barWidth}
                 height={incomeHeight}
-                fill={ACCENT}
+                fill={INCOME}
               />
               <Rect
                 x={center + 1.5}
                 y={plotHeight - expenseHeight}
                 width={barWidth}
                 height={expenseHeight}
-                fill={ACCENT_TWO}
+                fill={EXPENSE}
               />
             </G>
           );

@@ -1,5 +1,5 @@
-/* SpendWise service worker: offline shell only. Authenticated pages are never cached. */
-const VERSION = "spendwise-v1";
+/* Dalorro service worker: offline shell only. Authenticated pages are never cached. */
+const VERSION = "dalorro-v1";
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

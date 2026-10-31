@@ -1,5 +1,6 @@
 import { ArrowLeftRight, FileText, Receipt, TrendingUp } from "lucide-react";
 import { AmountText, Progress, ProgressRing } from "@repo/ui";
+import { Logo } from "@/components/logo";
 import { budgetProgress, formatMoney } from "@repo/finance";
 import {
   DEMO_CURRENCY,
@@ -70,9 +71,9 @@ export function CashFlowVisual() {
         {months.map((month) => (
           <div key={month.key} className="flex h-full flex-1 flex-col items-center gap-1">
             <div className="flex h-full w-full items-end justify-center gap-1">
-              <div className="w-3 rounded-sm bg-chart-1" style={{ height: height(month.income) }} />
+              <div className="w-3 rounded-sm bg-income" style={{ height: height(month.income) }} />
               <div
-                className="w-3 rounded-sm bg-chart-2"
+                className="w-3 rounded-sm bg-expense"
                 style={{ height: height(month.expense) }}
               />
             </div>
@@ -82,11 +83,11 @@ export function CashFlowVisual() {
       </div>
       <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <span aria-hidden="true" className="size-2 rounded-sm bg-chart-1" />
+          <span aria-hidden="true" className="size-2 rounded-sm bg-income" />
           Income
         </span>
         <span className="inline-flex items-center gap-1">
-          <span aria-hidden="true" className="size-2 rounded-sm bg-chart-2" />
+          <span aria-hidden="true" className="size-2 rounded-sm bg-expense" />
           Expenses
         </span>
       </div>
@@ -107,13 +108,13 @@ export function BudgetsVisual() {
           progress.state === "exceeded"
             ? "text-negative"
             : progress.state === "near_limit"
-              ? "text-chart-3"
+              ? "text-warning"
               : "text-positive";
         const indicator =
           progress.state === "exceeded"
             ? "[&_[data-slot=progress-indicator]]:bg-negative"
             : progress.state === "near_limit"
-              ? "[&_[data-slot=progress-indicator]]:bg-chart-3"
+              ? "[&_[data-slot=progress-indicator]]:bg-warning"
               : "[&_[data-slot=progress-indicator]]:bg-positive";
         return (
           <div key={budget.id} className="flex flex-col gap-1">
@@ -219,7 +220,7 @@ export function AccountsVisual() {
 }
 
 const INSIGHT_DOT = {
-  warning: "bg-chart-3",
+  warning: "bg-warning",
   danger: "bg-negative",
   neutral: "bg-muted-foreground",
 } as const;
@@ -248,9 +249,7 @@ export function ReportsVisual() {
     <div className="w-full rounded-md border border-border bg-card p-3" aria-hidden="true">
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
         <div className="flex items-center gap-2">
-          <span className="grid size-5 place-items-center rounded-[3px] bg-primary text-[9px] font-bold text-primary-foreground">
-            S
-          </span>
+          <Logo variant="mark" size="sm" markClassName="size-5" />
           <div>
             <p className="text-[10px] font-semibold leading-tight">Monthly Summary</p>
             <p className="text-[8px] text-muted-foreground">October 2026</p>

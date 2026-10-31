@@ -14,8 +14,8 @@ import { formatMoney, formatMoneyCompact } from "@repo/finance";
 type Point = { key: string; label: string; income: number; expense: number; net: number };
 
 const config = {
-  income: { label: "Income", color: "var(--chart-1)" },
-  expense: { label: "Expenses", color: "var(--chart-5)" },
+  income: { label: "Income", color: "var(--income)" },
+  expense: { label: "Expenses", color: "var(--expense)" },
 } satisfies ChartConfig;
 
 export function CashFlowChart({

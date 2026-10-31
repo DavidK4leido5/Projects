@@ -25,8 +25,8 @@ async function LoginBody() {
 function LoginCard() {
   return (
     <AuthShell
-      title="Welcome back"
-      description="Sign in to pick up where your money left off."
+      title="Welcome to Dalorro"
+      description="Sign in with your email and password to pick up where you left off."
       footer={
         <span>
           New here?{" "}

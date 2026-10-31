@@ -5,13 +5,12 @@ import { MarketingFooter } from "@/features/landing/marketing-footer";
 import { MarketingNavbar } from "@/features/landing/marketing-navbar";
 import { site } from "@/features/landing/content";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `https://${site.domain}`;
+const pageTitle = site.name + " | " + site.tagline;
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
-  title: {
-    absolute: "SpendWise | Know where your money goes, and where it's headed",
-  },
+  title: { absolute: pageTitle },
   description: site.description,
   applicationName: site.name,
   alternates: { canonical: "/" },
@@ -19,13 +18,13 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: site.name,
-    title: "SpendWise | Know where your money goes, and where it's headed",
+    title: pageTitle,
     description: site.description,
     locale: "en_PH",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SpendWise | Know where your money goes",
+    title: pageTitle,
     description: site.description,
   },
   robots: { index: true, follow: true },

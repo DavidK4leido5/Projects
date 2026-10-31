@@ -24,8 +24,8 @@ async function SignupBody() {
 function SignupCard() {
   return (
     <AuthShell
-      title="Create your account"
-      description="A calm place for everyday money, from the first peso."
+      title="Create your Dalorro account"
+      description="Email and password only. A calm place for everyday money, from the first peso."
       footer={
         <span>
           Already have an account?{" "}

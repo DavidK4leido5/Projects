@@ -16,7 +16,7 @@ packages/
   shared/       framework-agnostic helpers and types
   ui/           shared React components (shadcn primitives + derived components)
   finance/      pure money/date/calculation module and Zod validators
-  db/           SpendWise Drizzle schema, clients, migrations, and seed
+  db/           Dalorro Drizzle schema, clients, migrations, and seed
 ```
 
 ## Commands
@@ -34,15 +34,15 @@ packages/
 Targeted runs: `pnpm --filter @repo/swiftcart dev`, `pnpm --filter @repo/spendwise dev`,
 `pnpm --filter @repo/ui typecheck`.
 
-SpendWise setup, Neon provisioning, migrations, seed, and Vercel deployment:
+Dalorro setup, Neon provisioning, migrations, seed, and Vercel deployment:
 [apps/spendwise/README.md](apps/spendwise/README.md).
 
 ## CI/CD
 
 `.github/workflows/ci.yml` runs on pushes to `master`, pull requests, and manual dispatch:
-lint, typecheck, format check, SpendWise unit tests, then builds for both SpendWise and SwiftCart.
+lint, typecheck, format check, Dalorro unit tests, then builds for both Dalorro and SwiftCart.
 SwiftCart's build reads its isolated Neon `ci` branch through the `SWIFTCART_DATABASE_URL`
-repository secret; SpendWise builds from placeholders because its PPR shells do not query Postgres.
+repository secret; Dalorro builds from placeholders because its PPR shells do not query Postgres.
 
 Both Vercel projects (`spendwise` and `swiftcart`) are connected to this GitHub repository and
 deploy `master` to production. Other branches are disabled in each app's `vercel.json` until

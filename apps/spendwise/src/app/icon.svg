@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Dalorro</title>
+  <rect width="512" height="512" rx="112" fill="#0F766E" />
+  <g transform="translate(-2.13 5.71) scale(0.9741)" fill="none">
+    <path
+      d="M100 342C146 342 158 158 256 158C354 158 366 342 412 342"
+      stroke="#FFFFFF"
+      stroke-width="56"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <circle cx="412" cy="342" r="46" fill="#C98A1B" />
+  </g>
+</svg>

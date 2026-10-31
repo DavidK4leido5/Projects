@@ -73,9 +73,9 @@ export function CategoryDonut({
                 />
                 <span className="truncate">{row.name}</span>
               </dt>
-              <dd className="shrink-0 tabular-nums text-muted-foreground">
+              <dd className="shrink-0 whitespace-nowrap text-right text-[11px] tabular-nums text-muted-foreground sm:text-xs">
                 {formatMoney(row.amount, currency, locale)}
-                <span className="ml-1.5 text-xs">{row.share}%</span>
+                <span className="ml-1.5 text-[10px]">{row.share}%</span>
               </dd>
             </div>
           ))}

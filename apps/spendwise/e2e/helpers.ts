@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
-export const DEMO_EMAIL = process.env.E2E_EMAIL ?? "demo@spendwise.app";
-export const DEMO_PASSWORD = process.env.E2E_PASSWORD ?? "SpendWise2026!";
+export const DEMO_EMAIL = process.env.E2E_EMAIL ?? "demo@dalorro.app";
+export const DEMO_PASSWORD = process.env.E2E_PASSWORD ?? "Dalorro2026!";
 
 export async function login(page: Page): Promise<void> {
   await page.goto("/login");

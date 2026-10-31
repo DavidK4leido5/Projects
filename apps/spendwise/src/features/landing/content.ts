@@ -1,9 +1,10 @@
+import { brand } from "@/lib/brand";
+
 export const site = {
-  name: "SpendWise",
-  tagline: "A calmer way to see your money.",
-  description:
-    "Track accounts, spending, budgets, and goals, then export a clear PDF report when you need one. Email and password only.",
-  domain: "spendwise.app",
+  name: brand.name,
+  tagline: brand.tagline,
+  description: brand.description,
+  domain: brand.domain,
 } as const;
 
 export type IconKey =
@@ -40,14 +41,10 @@ export const nav = {
 } as const;
 
 export const hero = {
-  headlineOptions: [
-    "Know where your money goes, and where it's headed.",
-    "Your money, in one clear picture.",
-    "Make sense of every peso.",
-  ],
-  headline: "Know where your money goes, and where it's headed.",
+  headline: brand.tagline,
+  headlineOptions: [brand.tagline, ...brand.alternateTaglines],
   subheadline:
-    "SpendWise turns everyday entries into a clear view of your cash flow, budgets, and goals. No bank connections, no noise. Just your numbers, and a report when you need one.",
+    "Dalorro turns everyday entries into a calm view of your cash flow, budgets, goals, and savings, with clear reports when you need them. Email and password only, no bank connections.",
   primaryCta: { label: "Get started free", href: "/signup" },
   secondaryCta: { label: "See how it works", href: "#tour" },
   reassurance: "Free to start. Email and password only. No credit card.",
@@ -177,7 +174,7 @@ export const tour = {
     {
       id: "dashboard",
       label: "Dashboard",
-      caption: "One view of balances, cash flow, budgets, goals, and the bills coming up.",
+      caption: "One view of balances, cash flow, budgets, goals, savings, and the bills coming up.",
     },
     {
       id: "transactions",
@@ -208,7 +205,7 @@ export const tour = {
 export const reportShowcase = {
   title: "A report you can hand to someone.",
   description:
-    "Choose a period and the sections that matter. SpendWise builds the PDF on the server with your currency, locale, and report logo.",
+    "Choose a period and the sections that matter. Dalorro builds the PDF on the server with your currency, locale, and report logo.",
   types: [
     "Monthly Summary",
     "Custom Range",
@@ -235,7 +232,7 @@ export const security = {
       icon: "lock" as IconKey,
       title: "Passwords handled by Neon Auth",
       detail:
-        "Passwords are hashed by the auth service and sessions use HTTP-only cookies. SpendWise never stores a password.",
+        "Passwords are hashed by the auth service and sessions use HTTP-only cookies. Dalorro never stores a password.",
     },
     {
       icon: "database" as IconKey,
@@ -260,9 +257,14 @@ export const security = {
 
 export const faqs = [
   {
-    question: "Is SpendWise free?",
+    question: "Is Dalorro free?",
     answer:
       "You can create an account and use the app free. There is no paid plan yet, and no credit card is required to start.",
+  },
+  {
+    question: "What does Dalorro mean?",
+    answer:
+      "Dalorro joins Daloy, the Tagalog word for flow, and Ahorro, the Spanish word for savings. The app is built around both ideas: money that moves, and money you keep.",
   },
   {
     question: "Which currencies are supported?",
@@ -272,7 +274,7 @@ export const faqs = [
   {
     question: "Can I import from my bank?",
     answer:
-      "Yes, by uploading a CSV exported from your bank. SpendWise does not connect to banks or payment providers directly.",
+      "Yes, by uploading a CSV exported from your bank. Dalorro does not connect to banks or payment providers directly.",
   },
   {
     question: "How do reports work?",
@@ -287,7 +289,7 @@ export const faqs = [
   {
     question: "Is my data private?",
     answer:
-      "Your records are scoped to your account and are not shared. SpendWise has no bank connections, advertising scripts, or payment integrations.",
+      "Your records are scoped to your account and are not shared. Dalorro has no bank connections, advertising scripts, or payment integrations.",
   },
   {
     question: "Does it work on mobile?",
@@ -302,15 +304,15 @@ export const faqs = [
 ] as const;
 
 export const finalCta = {
-  title: "Your numbers, finally in one place.",
+  title: "Start with one account. Watch the flow take shape.",
   description:
-    "Start with one account and one entry. The picture fills in from there, and a clear report is always a few clicks away.",
+    "Add an entry, set a budget, name a savings goal. Your cash flow and reports build from there.",
   cta: { label: "Get started free", href: "/signup" },
   reassurance: "Free to start. Email and password only. No credit card.",
 } as const;
 
 export const footer = {
-  tagline: "A personal record book for cash flow, budgets, and reports.",
+  tagline: "A personal record book for cash flow, budgets, savings, and reports.",
   columns: [
     {
       title: "Product",

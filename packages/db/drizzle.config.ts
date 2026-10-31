@@ -7,7 +7,7 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: { url },
-  // Only SpendWise tables. Neon Auth lives in neon_auth and is left alone.
+  // Only Dalorro tables. Neon Auth lives in neon_auth and is left alone.
   schemaFilter: ["spendwise"],
   migrations: {
     schema: "drizzle",

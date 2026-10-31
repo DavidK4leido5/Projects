@@ -1,3 +1,4 @@
+import { brand } from "@/lib/brand";
 import {
   ArrowLeftRight,
   FileText,
@@ -38,5 +39,5 @@ export function titleForPath(pathname: string): string {
   const match = NAV_ITEMS.find(
     (item) => pathname === item.href || pathname.startsWith(item.href + "/"),
   );
-  return match?.label ?? "SpendWise";
+  return match?.label ?? brand.name;
 }

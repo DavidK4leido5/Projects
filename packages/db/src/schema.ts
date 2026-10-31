@@ -19,7 +19,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 /**
- * Every SpendWise table lives in its own Postgres schema. Neon Auth owns
+ * Every Dalorro table lives in its own Postgres schema. Neon Auth owns
  * "neon_auth" and is never modified here. The auth user id is stored as a
  * uuid column on each table, without a cross-schema foreign key, so the app
  * works whether Auth lives in the same database or not.

@@ -1,6 +1,7 @@
 import { FileQuestion } from "lucide-react";
 import Link from "next/link";
 import { Button, EmptyState } from "@repo/ui";
+import { brand } from "@/lib/brand";
 
 export default function NotFound() {
   return (
@@ -9,7 +10,7 @@ export default function NotFound() {
         <EmptyState
           icon={FileQuestion}
           title="Page not found"
-          description="That link does not point anywhere in SpendWise."
+          description={`That link does not point anywhere in ${brand.name}.`}
           action={
             <Button asChild size="sm">
               <Link href="/dashboard">Back to dashboard</Link>
